@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#050a0f" />
+  <title>QuantumCalc — Calculadora Científica Avanzada</title>
+
+  <!-- ── Google Fonts ── -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet" />
+
+  <!-- ── Bibliotecas externas ── -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.2/math.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.4/gsap.min.js"></script>
+
+  <!-- ── Hoja de estilos propia ── -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ════════════════════════════════════════════════════
+       OVERLAY DECORATIVO (scanlines + ruido de fondo)
+       ════════════════════════════════════════════════════ -->
+  <div class="scanlines" aria-hidden="true"></div>
+  <div class="bg-noise"  aria-hidden="true"></div>
+
+  <!-- ════════════════════════════════════════════════════
+       HEADER
+       ════════════════════════════════════════════════════ -->
+  <header class="header" role="banner">
+    <div class="header-logo" aria-label="QuantumCalc versión 2.4.1">
+      <span class="logo-bracket">⟨</span>
+      <span class="logo-text">QuantumCalc</span>
+      <span class="ver">v2.4.1</span>
+    </div>
+
+    <!-- Botón hamburguesa solo en móvil -->
+    <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Menú" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+
+    <div class="header-status" id="header-status" role="status" aria-live="polite">
+      <span class="status-item"><span class="status-dot" aria-hidden="true"></span>SISTEMA ACTIVO</span>
+      <span class="status-item" id="clock-display" aria-label="Hora actual">--:--:--</span>
+      <span class="status-item status-libs">MATH · PLOTLY · OCR</span>
+    </div>
+  </header>
+
+  <!-- ════════════════════════════════════════════════════
+       LAYOUT PRINCIPAL  (3 columnas desktop)
+       ════════════════════════════════════════════════════ -->
+  <div class="main-layout" id="main-layout">
+
+    <!-- ─────────────────────────────────────────
+         COLUMNA 1 · CALCULADORA
+         ───────────────────────────────────────── -->
+    <aside class="calc-panel" id="calc-panel" aria-label="Panel de entrada">
+
+      <!-- Display -->
+      <section class="display-section">
+        <div class="display-label">// EXPRESIÓN</div>
+        <div class="display-main" id="display-main">
+          <div
+            id="input-display"
+            contenteditable="true"
+            spellcheck="false"
+            role="textbox"
+            aria-label="Expresión matemática"
+            aria-multiline="false"
+          ></div>
+          <div id="result-display" aria-live="polite" aria-label="Vista previa del resultado"></div>
+          <!-- Indicador de escritura -->
+          <div class="display-typing-indicator" id="typing-indicator" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Tabs de modo -->
+      <nav class="mode-tabs" role="tablist" aria-label="Modo de calculadora">
+        <button class="mode-tab active" data-mode="basic"   role="tab" aria-selected="true"  onclick="switchMode('basic')"  >BÁSICO</button>
+        <button class="mode-tab"        data-mode="algebra" role="tab" aria-selected="false" onclick="switchMode('algebra')">ÁLGEBRA</button>
+        <button class="mode-tab"        data-mode="stats"   role="tab" aria-selected="false" onclick="switchMode('stats')"  >STATS</button>
+      </nav>
+
+      <!-- ── TECLADO VIRTUAL ── -->
+      <div class="keyboard-section" id="keyboard-section">
+
+        <!-- Control -->
+        <div class="key-group-label">// CONTROL</div>
+        <div class="key-row key-row-4">
+          <button class="key key-clear"  onclick="clearAll()"      aria-label="Borrar todo">AC</button>
+          <button class="key key-clear"  onclick="deleteLast()"    aria-label="Borrar último">⌫</button>
+          <button class="key key-op"     onclick="insertText('(')" aria-label="Paréntesis izquierdo">(</button>
+          <button class="key key-op"     onclick="insertText(')')" aria-label="Paréntesis derecho">)</button>
+        </div>
+
+        <!-- Operadores -->
+        <div class="key-group-label">// OPERADORES</div>
+        <div class="key-row key-row-5">
+          <button class="key key-op" onclick="insertText('+')">+</button>
+          <button class="key key-op" onclick="insertText('-')">−</button>
+          <button class="key key-op" onclick="insertText('*')">×</button>
+          <button class="key key-op" onclick="insertText('/')">÷</button>
+          <button class="key key-op" onclick="insertText('^')">^</button>
+        </div>
+
+        <!-- Dígitos -->
+        <div class="key-group-label">// DÍGITOS</div>
+        <div class="key-row key-row-5">
+          <button class="key" onclick="insertText('7')">7</button>
+          <button class="key" onclick="insertText('8')">8</button>
+          <button class="key" onclick="insertText('9')">9</button>
+          <button class="key" onclick="insertText('4')">4</button>
+          <button class="key" onclick="insertText('5')">5</button>
+        </div>
+        <div class="key-row key-row-5">
+          <button class="key" onclick="insertText('6')">6</button>
+          <button class="key" onclick="insertText('1')">1</button>
+          <button class="key" onclick="insertText('2')">2</button>
+          <button class="key" onclick="insertText('3')">3</button>
+          <button class="key" onclick="insertText('0')">0</button>
+        </div>
+        <div class="key-row key-row-4">
+          <button class="key"         onclick="insertText('.')">.</button>
+          <button class="key key-op"  onclick="insertText('e')">E</button>
+          <button class="key key-op"  onclick="insertText('pi')">π</button>
+          <button class="key key-equals" onclick="calculate()" aria-label="Calcular">=</button>
+        </div>
+
+        <!-- ─ PANEL BÁSICO ─ -->
+        <div id="fn-basic">
+          <div class="key-group-label">// FUNCIONES</div>
+          <div class="key-row key-row-6">
+            <button class="key key-fn" onclick="insertText('sqrt(')">√</button>
+            <button class="key key-fn" onclick="insertText('abs(')">|x|</button>
+            <button class="key key-fn" onclick="insertText('log(')">ln</button>
+            <button class="key key-fn" onclick="insertText('log10(')">log₁₀</button>
+            <button class="key key-fn" onclick="insertText('exp(')">eˣ</button>
+            <button class="key key-fn" onclick="insertText('factorial(')">n!</button>
+          </div>
+          <div class="key-row key-row-6">
+            <button class="key key-fn" onclick="insertText('sin(')">sin</button>
+            <button class="key key-fn" onclick="insertText('cos(')">cos</button>
+            <button class="key key-fn" onclick="insertText('tan(')">tan</button>
+            <button class="key key-fn" onclick="insertText('asin(')">arcsin</button>
+            <button class="key key-fn" onclick="insertText('acos(')">arccos</button>
+            <button class="key key-fn" onclick="insertText('atan(')">arctan</button>
+          </div>
+          <div class="key-row key-row-4">
+            <button class="key key-fn" onclick="insertText('ceil(')">⌈x⌉</button>
+            <button class="key key-fn" onclick="insertText('floor(')">⌊x⌋</button>
+            <button class="key key-fn" onclick="insertText('round(')">≈</button>
+            <button class="key key-fn" onclick="insertText('nthRoot(')">ⁿ√</button>
+          </div>
+        </div>
+
+        <!-- ─ PANEL ÁLGEBRA ─ -->
+        <div id="fn-algebra" style="display:none">
+          <div class="key-group-label">// ÁLGEBRA SIMBÓLICA</div>
+          <div class="key-row key-row-4">
+            <button class="key key-fn" onclick="insertText('x')">x</button>
+            <button class="key key-fn" onclick="insertText('y')">y</button>
+            <button class="key key-fn" onclick="insertText('z')">z</button>
+            <button class="key key-fn" onclick="insertText('=')"> = </button>
+          </div>
+          <div class="key-row key-row-4">
+            <button class="key key-action" onclick="runDerivative()">d/dx</button>
+            <button class="key key-action" onclick="runIntegral()">∫dx</button>
+            <button class="key key-action" onclick="runSimplify()">simplify</button>
+            <button class="key key-action" onclick="runSolve()">solve</button>
+          </div>
+          <div class="key-row key-row-4">
+            <button class="key key-fn" onclick="insertText('matrix([[')">Mat</button>
+            <button class="key key-fn" onclick="insertText('det(')">det</button>
+            <button class="key key-fn" onclick="insertText('inv(')">A⁻¹</button>
+            <button class="key key-fn" onclick="insertText('transpose(')">Aᵀ</button>
+          </div>
+        </div>
+
+        <!-- ─ PANEL STATS ─ -->
+        <div id="fn-stats" style="display:none">
+          <div class="key-group-label">// ESTADÍSTICAS — ingresar [1,2,3,...]</div>
+          <div class="key-row key-row-4">
+            <button class="key key-fn" onclick="insertText('mean(')">μ</button>
+            <button class="key key-fn" onclick="insertText('median(')">med</button>
+            <button class="key key-fn" onclick="insertText('mode(')">moda</button>
+            <button class="key key-fn" onclick="insertText('std(')">σ</button>
+          </div>
+          <div class="key-row key-row-4">
+            <button class="key key-fn" onclick="insertText('variance(')">σ²</button>
+            <button class="key key-fn" onclick="insertText('sum(')">Σ</button>
+            <button class="key key-fn" onclick="insertText('min(')">min</button>
+            <button class="key key-fn" onclick="insertText('max(')">max</button>
+          </div>
+          <div class="key-row key-row-4">
+            <button class="key key-action" onclick="runRegression()">regresión</button>
+            <button class="key key-action" onclick="runHistogram()">histograma</button>
+            <button class="key key-fn" onclick="insertText('combinations(')">C(n,k)</button>
+            <button class="key key-fn" onclick="insertText('permutations(')">P(n,k)</button>
+          </div>
+        </div>
+
+        <!-- Botón calcular principal -->
+        <div class="calc-btn-wrap">
+          <button class="key key-calc-main" onclick="calculate()" aria-label="Calcular y mostrar pasos">
+            <span class="calc-btn-icon">▶</span>
+            <span>CALCULAR Y MOSTRAR PASOS</span>
+          </button>
+        </div>
+      </div><!-- /keyboard-section -->
+
+      <!-- ── OCR ── -->
+      <section class="ocr-section" aria-label="Reconocimiento de imagen">
+        <div class="ocr-title">OCR — RECONOCIMIENTO DE IMAGEN</div>
+        <div
+          class="ocr-drop-zone"
+          id="ocr-drop-zone"
+          role="button"
+          tabindex="0"
+          aria-label="Zona para subir imagen con ecuación"
+          onclick="document.getElementById('ocr-file-input').click()"
+          onkeydown="if(event.key==='Enter'||event.key===' ')document.getElementById('ocr-file-input').click()"
+        >
+          <div class="ocr-icon-wrap">
+            <span class="ocr-icon">📷</span>
+            <div class="ocr-ripple" id="ocr-ripple"></div>
+          </div>
+          <div class="ocr-text">Arrastra una imagen o <span>haz clic para subir</span></div>
+          <div class="ocr-hint">PNG · JPG · BMP · TIFF</div>
+        </div>
+        <input type="file" id="ocr-file-input" accept="image/*" onchange="handleOCRFile(event)" aria-hidden="true" />
+
+        <div class="ocr-progress" id="ocr-progress" aria-live="polite">
+          <div class="progress-bar-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="progress-bar-fill" id="ocr-bar"></div>
+            <div class="progress-bar-glow"  id="ocr-glow"></div>
+          </div>
+          <div class="ocr-status" id="ocr-status">Inicializando OCR...</div>
+        </div>
+      </section>
+
+    </aside><!-- /calc-panel -->
+
+    <!-- ─────────────────────────────────────────
+         COLUMNA 2 · GRÁFICAS  (desktop: col 2)
+         ───────────────────────────────────────── -->
+    <section class="graph-panel" id="graph-panel" aria-label="Panel de gráficas">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="panel-title-icon">📊</span>
+          VISUALIZACIÓN GRÁFICA
+          <span class="badge">PLOTLY.JS</span>
+        </div>
+      </div>
+
+      <div class="graph-controls">
+        <div class="graph-input-wrap">
+          <label for="graph-expr" class="sr-only">Función a graficar</label>
+          <input
+            type="text"
+            class="graph-input"
+            id="graph-expr"
+            placeholder="f(x) = sin(x) * cos(x/2)"
+            value="sin(x) * cos(x/2)"
+            aria-label="Función para graficar"
+          />
+        </div>
+        <div class="graph-btn-group">
+          <button class="btn-graph btn-graph-2d" onclick="plot2D()"     aria-label="Graficar en 2D">📈 2D</button>
+          <button class="btn-graph btn-graph-3d" onclick="plot3D()"     aria-label="Graficar en 3D">🌐 3D</button>
+          <button class="btn-graph btn-clear-graph" onclick="clearGraph()" aria-label="Limpiar gráfica">✕</button>
+        </div>
+      </div>
+
+      <div id="graph-container" role="img" aria-label="Área de la gráfica">
+        <div class="graph-placeholder" id="graph-placeholder">
+          <div class="graph-placeholder-icon">∿</div>
+          <div class="graph-placeholder-text">Ingresa una función y elige 2D o 3D</div>
+        </div>
+      </div>
+
+      <!-- Overlay de carga para gráfica -->
+      <div class="graph-loading" id="graph-loading" aria-hidden="true">
+        <div class="graph-loading-ring"></div>
+        <span>Calculando…</span>
+      </div>
+    </section>
+
+    <!-- ─────────────────────────────────────────
+         COLUMNA 3 · PASOS  (desktop: col 3)
+         ───────────────────────────────────────── -->
+    <section class="steps-panel" id="steps-panel" aria-label="Panel de pasos">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="panel-title-icon">∑</span>
+          RESOLUCIÓN PASO A PASO
+          <span class="badge" id="steps-count">0 PASOS</span>
+        </div>
+        <div class="panel-actions">
+          <button class="btn-small" onclick="replaySteps()" aria-label="Repetir animación de pasos">↺ REPETIR</button>
+          <button class="btn-small btn-small-danger" onclick="clearSteps()" aria-label="Limpiar pasos">✕ LIMPIAR</button>
+        </div>
+      </div>
+
+      <div class="steps-container" id="steps-container" role="log" aria-live="polite" aria-label="Pasos de resolución">
+        <div class="empty-state" id="steps-empty">
+          <div class="empty-state-icon">∑</div>
+          <div class="empty-state-text">Ingresa una expresión y presiona<br><strong>CALCULAR</strong> para ver los pasos</div>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /main-layout -->
+
+  <!-- ════════════════════════════════════════════════════
+       TOASTS
+       ════════════════════════════════════════════════════ -->
+  <div class="toast-container" id="toast-container" role="alert" aria-live="assertive"></div>
+
+  <!-- ════════════════════════════════════════════════════
+       SCRIPTS
+       ════════════════════════════════════════════════════ -->
+  <script src="script.js"></script>
+</body>
+</html>
