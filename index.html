@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
@@ -9,33 +10,61 @@
   <!-- ── Google Fonts ── -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap"
+    rel="stylesheet" />
 
   <!-- ── Bibliotecas externas ── -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.2/math.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.4/gsap.min.js"></script>
+  <!-- jsPDF + AutoTable: exportación PDF estilizada -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <!-- SheetJS: exportación Excel con formato -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
   <!-- ── Hoja de estilos propia ── -->
   <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
 
   <!-- ════════════════════════════════════════════════════
        OVERLAY DECORATIVO (scanlines + ruido de fondo)
        ════════════════════════════════════════════════════ -->
   <div class="scanlines" aria-hidden="true"></div>
-  <div class="bg-noise"  aria-hidden="true"></div>
+  <div class="bg-noise" aria-hidden="true"></div>
 
   <!-- ════════════════════════════════════════════════════
        HEADER
        ════════════════════════════════════════════════════ -->
   <header class="header" role="banner">
-    <div class="header-logo" aria-label="QuantumCalc versión 2.4.1">
+    <div class="header-logo" aria-label="QuantumCalc versión 2.5.0">
       <span class="logo-bracket">⟨</span>
       <span class="logo-text">QuantumCalc</span>
-      <span class="ver">v2.4.1</span>
+      <span class="ver">v2.5.0</span>
+    </div>
+
+    <!-- Controles centrales: historial + exportación -->
+    <div class="header-controls">
+      <button class="hdr-btn hdr-btn-history" id="history-toggle-btn" onclick="toggleHistoryPanel()"
+        aria-label="Mostrar historial" title="Historial de cálculos">
+        <span class="hdr-btn-icon">🕐</span>
+        <span class="hdr-btn-label">HISTORIAL</span>
+        <span class="history-badge" id="history-badge">0</span>
+      </button>
+      <button class="hdr-btn hdr-btn-pdf" onclick="exportPDF()" aria-label="Exportar PDF"
+        title="Exportar historial a PDF">
+        <span class="hdr-btn-icon">📄</span>
+        <span class="hdr-btn-label">PDF</span>
+      </button>
+      <button class="hdr-btn hdr-btn-excel" onclick="exportExcel()" aria-label="Exportar Excel"
+        title="Exportar historial a Excel">
+        <span class="hdr-btn-icon">📊</span>
+        <span class="hdr-btn-label">EXCEL</span>
+      </button>
     </div>
 
     <!-- Botón hamburguesa solo en móvil -->
@@ -51,6 +80,47 @@
   </header>
 
   <!-- ════════════════════════════════════════════════════
+       PANEL DE HISTORIAL (drawer lateral)
+       ════════════════════════════════════════════════════ -->
+  <aside class="history-drawer" id="history-drawer" aria-label="Historial de cálculos" aria-hidden="true">
+    <div class="history-header">
+      <div class="history-title">
+        <span>🕐</span> HISTORIAL DE CÁLCULOS
+      </div>
+      <div class="history-header-actions">
+        <button class="btn-small" onclick="exportPDF()" title="Exportar PDF">📄 PDF</button>
+        <button class="btn-small" onclick="exportExcel()" title="Exportar Excel">📊 XLS</button>
+        <button class="btn-small btn-small-danger" onclick="clearHistory()" title="Limpiar historial">🗑
+          LIMPIAR</button>
+        <button class="history-close-btn" onclick="toggleHistoryPanel()" aria-label="Cerrar historial">✕</button>
+      </div>
+    </div>
+
+    <!-- Buscador dentro del historial -->
+    <div class="history-search-wrap">
+      <input type="search" id="history-search" class="history-search" placeholder="🔍  Buscar en historial..."
+        oninput="filterHistory(this.value)" aria-label="Buscar en historial" />
+    </div>
+
+    <!-- Lista de entradas -->
+    <div class="history-list" id="history-list" role="list" aria-live="polite">
+      <div class="history-empty" id="history-empty">
+        <div class="history-empty-icon">📭</div>
+        <div class="history-empty-text">Aún no hay cálculos guardados.<br>¡Empieza a calcular!</div>
+      </div>
+    </div>
+
+    <!-- Footer con conteo -->
+    <div class="history-footer">
+      <span id="history-count-label">0 registros</span>
+      <span class="history-footer-note">Guardado en localStorage</span>
+    </div>
+  </aside>
+
+  <!-- Backdrop para cerrar el drawer en móvil -->
+  <div class="history-backdrop" id="history-backdrop" onclick="toggleHistoryPanel()"></div>
+
+  <!-- ════════════════════════════════════════════════════
        LAYOUT PRINCIPAL  (3 columnas desktop)
        ════════════════════════════════════════════════════ -->
   <div class="main-layout" id="main-layout">
@@ -64,14 +134,8 @@
       <section class="display-section">
         <div class="display-label">// EXPRESIÓN</div>
         <div class="display-main" id="display-main">
-          <div
-            id="input-display"
-            contenteditable="true"
-            spellcheck="false"
-            role="textbox"
-            aria-label="Expresión matemática"
-            aria-multiline="false"
-          ></div>
+          <div id="input-display" contenteditable="true" spellcheck="false" role="textbox"
+            aria-label="Expresión matemática" aria-multiline="false"></div>
           <div id="result-display" aria-live="polite" aria-label="Vista previa del resultado"></div>
           <!-- Indicador de escritura -->
           <div class="display-typing-indicator" id="typing-indicator" aria-hidden="true">
@@ -82,9 +146,12 @@
 
       <!-- Tabs de modo -->
       <nav class="mode-tabs" role="tablist" aria-label="Modo de calculadora">
-        <button class="mode-tab active" data-mode="basic"   role="tab" aria-selected="true"  onclick="switchMode('basic')"  >BÁSICO</button>
-        <button class="mode-tab"        data-mode="algebra" role="tab" aria-selected="false" onclick="switchMode('algebra')">ÁLGEBRA</button>
-        <button class="mode-tab"        data-mode="stats"   role="tab" aria-selected="false" onclick="switchMode('stats')"  >STATS</button>
+        <button class="mode-tab active" data-mode="basic" role="tab" aria-selected="true"
+          onclick="switchMode('basic')">BÁSICO</button>
+        <button class="mode-tab" data-mode="algebra" role="tab" aria-selected="false"
+          onclick="switchMode('algebra')">ÁLGEBRA</button>
+        <button class="mode-tab" data-mode="stats" role="tab" aria-selected="false"
+          onclick="switchMode('stats')">STATS</button>
       </nav>
 
       <!-- ── TECLADO VIRTUAL ── -->
@@ -93,10 +160,10 @@
         <!-- Control -->
         <div class="key-group-label">// CONTROL</div>
         <div class="key-row key-row-4">
-          <button class="key key-clear"  onclick="clearAll()"      aria-label="Borrar todo">AC</button>
-          <button class="key key-clear"  onclick="deleteLast()"    aria-label="Borrar último">⌫</button>
-          <button class="key key-op"     onclick="insertText('(')" aria-label="Paréntesis izquierdo">(</button>
-          <button class="key key-op"     onclick="insertText(')')" aria-label="Paréntesis derecho">)</button>
+          <button class="key key-clear" onclick="clearAll()" aria-label="Borrar todo">AC</button>
+          <button class="key key-clear" onclick="deleteLast()" aria-label="Borrar último">⌫</button>
+          <button class="key key-op" onclick="insertText('(')" aria-label="Paréntesis izquierdo">(</button>
+          <button class="key key-op" onclick="insertText(')')" aria-label="Paréntesis derecho">)</button>
         </div>
 
         <!-- Operadores -->
@@ -126,9 +193,9 @@
           <button class="key" onclick="insertText('0')">0</button>
         </div>
         <div class="key-row key-row-4">
-          <button class="key"         onclick="insertText('.')">.</button>
-          <button class="key key-op"  onclick="insertText('e')">E</button>
-          <button class="key key-op"  onclick="insertText('pi')">π</button>
+          <button class="key" onclick="insertText('.')">.</button>
+          <button class="key key-op" onclick="insertText('e')">E</button>
+          <button class="key key-op" onclick="insertText('pi')">π</button>
           <button class="key key-equals" onclick="calculate()" aria-label="Calcular">=</button>
         </div>
 
@@ -217,15 +284,9 @@
       <!-- ── OCR ── -->
       <section class="ocr-section" aria-label="Reconocimiento de imagen">
         <div class="ocr-title">OCR — RECONOCIMIENTO DE IMAGEN</div>
-        <div
-          class="ocr-drop-zone"
-          id="ocr-drop-zone"
-          role="button"
-          tabindex="0"
-          aria-label="Zona para subir imagen con ecuación"
-          onclick="document.getElementById('ocr-file-input').click()"
-          onkeydown="if(event.key==='Enter'||event.key===' ')document.getElementById('ocr-file-input').click()"
-        >
+        <div class="ocr-drop-zone" id="ocr-drop-zone" role="button" tabindex="0"
+          aria-label="Zona para subir imagen con ecuación" onclick="document.getElementById('ocr-file-input').click()"
+          onkeydown="if(event.key==='Enter'||event.key===' ')document.getElementById('ocr-file-input').click()">
           <div class="ocr-icon-wrap">
             <span class="ocr-icon">📷</span>
             <div class="ocr-ripple" id="ocr-ripple"></div>
@@ -238,7 +299,7 @@
         <div class="ocr-progress" id="ocr-progress" aria-live="polite">
           <div class="progress-bar-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <div class="progress-bar-fill" id="ocr-bar"></div>
-            <div class="progress-bar-glow"  id="ocr-glow"></div>
+            <div class="progress-bar-glow" id="ocr-glow"></div>
           </div>
           <div class="ocr-status" id="ocr-status">Inicializando OCR...</div>
         </div>
@@ -261,18 +322,12 @@
       <div class="graph-controls">
         <div class="graph-input-wrap">
           <label for="graph-expr" class="sr-only">Función a graficar</label>
-          <input
-            type="text"
-            class="graph-input"
-            id="graph-expr"
-            placeholder="f(x) = sin(x) * cos(x/2)"
-            value="sin(x) * cos(x/2)"
-            aria-label="Función para graficar"
-          />
+          <input type="text" class="graph-input" id="graph-expr" placeholder="f(x) = sin(x) * cos(x/2)"
+            value="sin(x) * cos(x/2)" aria-label="Función para graficar" />
         </div>
         <div class="graph-btn-group">
-          <button class="btn-graph btn-graph-2d" onclick="plot2D()"     aria-label="Graficar en 2D">📈 2D</button>
-          <button class="btn-graph btn-graph-3d" onclick="plot3D()"     aria-label="Graficar en 3D">🌐 3D</button>
+          <button class="btn-graph btn-graph-2d" onclick="plot2D()" aria-label="Graficar en 2D">📈 2D</button>
+          <button class="btn-graph btn-graph-3d" onclick="plot3D()" aria-label="Graficar en 3D">🌐 3D</button>
           <button class="btn-graph btn-clear-graph" onclick="clearGraph()" aria-label="Limpiar gráfica">✕</button>
         </div>
       </div>
@@ -303,14 +358,16 @@
         </div>
         <div class="panel-actions">
           <button class="btn-small" onclick="replaySteps()" aria-label="Repetir animación de pasos">↺ REPETIR</button>
-          <button class="btn-small btn-small-danger" onclick="clearSteps()" aria-label="Limpiar pasos">✕ LIMPIAR</button>
+          <button class="btn-small btn-small-danger" onclick="clearSteps()" aria-label="Limpiar pasos">✕
+            LIMPIAR</button>
         </div>
       </div>
 
       <div class="steps-container" id="steps-container" role="log" aria-live="polite" aria-label="Pasos de resolución">
         <div class="empty-state" id="steps-empty">
           <div class="empty-state-icon">∑</div>
-          <div class="empty-state-text">Ingresa una expresión y presiona<br><strong>CALCULAR</strong> para ver los pasos</div>
+          <div class="empty-state-text">Ingresa una expresión y presiona<br><strong>CALCULAR</strong> para ver los pasos
+          </div>
         </div>
       </div>
     </section>
@@ -327,4 +384,5 @@
        ════════════════════════════════════════════════════ -->
   <script src="script.js"></script>
 </body>
+
 </html>
