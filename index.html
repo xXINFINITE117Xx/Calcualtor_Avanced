@@ -1,143 +1,277 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" dir="ltr">
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#050a0f" />
-  <title>QuantumCalc — Calculadora Científica Avanzada</title>
+  <meta name="description"
+    content="QuantumCalc — Calculadora científica con álgebra, gráficas 2D/3D, OCR e historial" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>QuantumCalc — Calculadora Científica</title>
 
-  <!-- ── Google Fonts ── -->
+  <!--
+    ╔══════════════════════════════════════════════════════╗
+    ║  FAVICON  — SVG embebido, nítido a cualquier tamaño  ║
+    ║  Símbolo ∑ en cyan sobre fondo oscuro + punto verde  ║
+    ║  Soportado: Chrome/Firefox/Edge/Safari 12+           ║
+    ╚══════════════════════════════════════════════════════╝
+  -->
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23050a0f'/%3E%3Crect x='1.5' y='1.5' width='61' height='61' rx='10.5' fill='none' stroke='%2300d4ff' stroke-width='2.5' opacity='.55'/%3E%3Ctext x='32' y='47' font-size='40' text-anchor='middle' font-family='Georgia%2Cserif' fill='%2300d4ff'%3E%CE%A3%3C/text%3E%3Ccircle cx='52' cy='12' r='6' fill='%2300ff88' opacity='.85'/%3E%3C/svg%3E" />
+
+  <!-- Fallback PNG para navegadores sin soporte SVG favicon -->
+  <link rel="icon" type="image/png" sizes="32x32"
+    href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAAAlwSFlzAAALEwAACxMBAJqcGAAAADRJREFUWAntw4EAAAAAgKD9qRepAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgzQMBAAHmQQAAAABJRU5ErkJggg==" />
+
+  <!-- Apple Touch Icon 180×180 para "Agregar a inicio" en iOS -->
+  <link rel="apple-touch-icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='38' fill='%23050a0f'/%3E%3Crect x='4' y='4' width='172' height='172' rx='34' fill='none' stroke='%2300d4ff' stroke-width='5' opacity='.55'/%3E%3Ctext x='90' y='132' font-size='110' text-anchor='middle' font-family='Georgia%2Cserif' fill='%2300d4ff'%3E%CE%A3%3C/text%3E%3Ccircle cx='148' cy='34' r='18' fill='%2300ff88' opacity='.85'/%3E%3C/svg%3E" />
+
+  <!--
+    ╔══════════════════════════════════════════╗
+    ║  FUENTES — carga no bloqueante (swap)    ║
+    ╚══════════════════════════════════════════╝
+  -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
+  <link rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap"
-    rel="stylesheet" />
+    media="print" onload="this.media='all'" />
+  <noscript>
+    <link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" />
+  </noscript>
 
-  <!-- ── Bibliotecas externas ── -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.2/math.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js" defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.4/gsap.min.js"></script>
-  <!-- jsPDF + AutoTable: exportación PDF estilizada -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-  <!-- SheetJS: exportación Excel con formato -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!--
+    ╔══════════════════════════════════════════════════════════╗
+    ║  GSAP — síncrono (necesario antes del DOM para anims)    ║
+    ║  Fallback stub si CDN falla → sin animaciones, sin crash ║
+    ╚══════════════════════════════════════════════════════════╝
+  -->
+  <script>
+    window.__gsapStub = function () {
+      const noop = () => ({ to: noop, fromTo: noop, call: noop, set: noop, kill: noop });
+      window.gsap = { to: noop, fromTo: noop, set: noop, timeline: () => noop(), kill: noop };
+      console.warn('[QC] GSAP no disponible — animaciones desactivadas');
+    };
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.4/gsap.min.js" onerror="window.__gsapStub()"></script>
 
-  <!-- ── Hoja de estilos propia ── -->
+  <!--
+    ╔══════════════════════════════════════════════════════╗
+    ║  MATH.JS — diferido; onerror muestra banner de aviso ║
+    ╚══════════════════════════════════════════════════════╝
+  -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.2/math.js" defer
+    onerror="document.getElementById('qc-nomath').hidden=false"></script>
+
+  <!--
+    ╔══════════════════════════════════════════════════════════════╗
+    ║  LAZY LOADERS — librerías pesadas se descargan solo cuando  ║
+    ║  se necesitan por primera vez (Plotly, Tesseract, jsPDF,    ║
+    ║  SheetJS). Reduce ~3 MB de carga inicial.                   ║
+    ╚══════════════════════════════════════════════════════════════╝
+  -->
+  <script>
+    /* ---- utilidad genérica ---- */
+    function _lazyLoad(urls, onDone, onFail) {
+      let idx = 0;
+      function next() {
+        if (idx >= urls.length) { onDone(); return; }
+        const s = document.createElement('script');
+        s.src = urls[idx++];
+        s.onload = next;
+        s.onerror = onFail || (() => console.error('[QC] Fallo carga: ' + s.src));
+        document.head.appendChild(s);
+      }
+      next();
+    }
+
+    /* ---- Plotly ---- */
+    let _plotlyPending = [];
+    function ensurePlotly(cb) {
+      if (window.Plotly) { cb(); return; }
+      _plotlyPending.push(cb);
+      if (_plotlyPending.length > 1) return; // ya cargando
+      _lazyLoad(
+        ['https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js'],
+        () => { _plotlyPending.forEach(fn => fn()); _plotlyPending = []; },
+        () => { window.QC && QC.ui.toast('Plotly no disponible. Verifica conexión.', 'error'); _plotlyPending = []; }
+      );
+    }
+
+    /* ---- Tesseract ---- */
+    let _tessPending = [];
+    function ensureTesseract(cb) {
+      if (window.Tesseract) { cb(); return; }
+      _tessPending.push(cb);
+      if (_tessPending.length > 1) return;
+      _lazyLoad(
+        ['https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js'],
+        () => { _tessPending.forEach(fn => fn()); _tessPending = []; },
+        () => { window.QC && QC.ui.toast('Tesseract no disponible. OCR no funcionará.', 'error'); _tessPending = []; }
+      );
+    }
+
+    /* ---- jsPDF + AutoTable ---- */
+    let _jsPDFPending = [];
+    function ensureJsPDF(cb) {
+      if (window.jspdf && window.jspdf.jsPDF) { cb(); return; }
+      _jsPDFPending.push(cb);
+      if (_jsPDFPending.length > 1) return;
+      _lazyLoad(
+        [
+          'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+          'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'
+        ],
+        () => { _jsPDFPending.forEach(fn => fn()); _jsPDFPending = []; },
+        () => { window.QC && QC.ui.toast('jsPDF no disponible.', 'error'); _jsPDFPending = []; }
+      );
+    }
+
+    /* ---- SheetJS ---- */
+    let _xlsxPending = [];
+    function ensureXLSX(cb) {
+      if (window.XLSX) { cb(); return; }
+      _xlsxPending.push(cb);
+      if (_xlsxPending.length > 1) return;
+      _lazyLoad(
+        ['https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'],
+        () => { _xlsxPending.forEach(fn => fn()); _xlsxPending = []; },
+        () => { window.QC && QC.ui.toast('SheetJS no disponible.', 'error'); _xlsxPending = []; }
+      );
+    }
+  </script>
+
   <link rel="stylesheet" href="styles.css" />
 </head>
 
 <body>
 
-  <!-- ════════════════════════════════════════════════════
-       OVERLAY DECORATIVO (scanlines + ruido de fondo)
-       ════════════════════════════════════════════════════ -->
+  <!-- Aviso si math.js no cargó -->
+  <div id="qc-nomath" hidden style="position:fixed;top:0;left:0;right:0;z-index:99999;padding:12px 20px;
+           background:#ff4466;color:#fff;font-family:monospace;font-size:.82rem;
+           text-align:center;letter-spacing:.06em;user-select:none">
+    ⚠ Math.js no pudo cargarse. Verifica tu conexión a Internet y recarga la página.
+  </div>
+
+  <!-- Overlays decorativos -->
   <div class="scanlines" aria-hidden="true"></div>
   <div class="bg-noise" aria-hidden="true"></div>
 
-  <!-- ════════════════════════════════════════════════════
+  <!-- ═══════════════════════════════════════════════
        HEADER
-       ════════════════════════════════════════════════════ -->
-  <header class="header" role="banner">
-    <div class="header-logo" aria-label="QuantumCalc versión 2.5.0">
-      <span class="logo-bracket">⟨</span>
+       ═══════════════════════════════════════════════ -->
+  <header class="header" id="site-header" role="banner">
+
+    <!-- Logo con SVG inline para la página -->
+    <div class="header-logo" role="img" aria-label="QuantumCalc v2.6">
+      <svg class="logo-svg" viewBox="0 0 32 32" width="26" height="26" aria-hidden="true" focusable="false">
+        <rect width="32" height="32" rx="6" fill="#050a0f" />
+        <rect x=".8" y=".8" width="30.4" height="30.4" rx="5.2" fill="none" stroke="#00d4ff" stroke-width="1.2"
+          opacity=".5" />
+        <text x="16" y="23" font-size="20" text-anchor="middle" font-family="Georgia,serif" fill="#00d4ff">Σ</text>
+        <circle cx="26" cy="6" r="3.5" fill="#00ff88" opacity=".85" />
+      </svg>
       <span class="logo-text">QuantumCalc</span>
-      <span class="ver">v2.5.0</span>
+      <span class="ver" aria-hidden="true">v2.6</span>
     </div>
 
-    <!-- Controles centrales: historial + exportación -->
-    <div class="header-controls">
-      <button class="hdr-btn hdr-btn-history" id="history-toggle-btn" onclick="toggleHistoryPanel()"
-        aria-label="Mostrar historial" title="Historial de cálculos">
-        <span class="hdr-btn-icon">🕐</span>
+    <!-- Controles: historial + exportación -->
+    <div class="header-controls" role="toolbar" aria-label="Historial y exportación">
+      <button class="hdr-btn hdr-btn-history" id="history-toggle-btn" type="button" onclick="QC.history.toggle()"
+        aria-label="Abrir historial de cálculos" aria-expanded="false" title="Historial (H)">
+        <span class="hdr-btn-icon" aria-hidden="true">🕐</span>
         <span class="hdr-btn-label">HISTORIAL</span>
-        <span class="history-badge" id="history-badge">0</span>
+        <span class="history-badge" id="history-badge" aria-live="polite">0</span>
       </button>
-      <button class="hdr-btn hdr-btn-pdf" onclick="exportPDF()" aria-label="Exportar PDF"
-        title="Exportar historial a PDF">
-        <span class="hdr-btn-icon">📄</span>
+      <button class="hdr-btn hdr-btn-pdf" type="button" onclick="QC.export.toPDF()"
+        aria-label="Exportar historial a PDF" title="Exportar PDF">
+        <span class="hdr-btn-icon" aria-hidden="true">📄</span>
         <span class="hdr-btn-label">PDF</span>
       </button>
-      <button class="hdr-btn hdr-btn-excel" onclick="exportExcel()" aria-label="Exportar Excel"
-        title="Exportar historial a Excel">
-        <span class="hdr-btn-icon">📊</span>
+      <button class="hdr-btn hdr-btn-excel" type="button" onclick="QC.export.toExcel()"
+        aria-label="Exportar historial a Excel" title="Exportar Excel">
+        <span class="hdr-btn-icon" aria-hidden="true">📊</span>
         <span class="hdr-btn-label">EXCEL</span>
       </button>
     </div>
 
-    <!-- Botón hamburguesa solo en móvil -->
-    <button class="mobile-menu-btn" id="mobile-menu-btn" aria-label="Menú" aria-expanded="false">
+    <!-- Hamburguesa (solo móvil) -->
+    <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Abrir menú de estado"
+      aria-expanded="false" aria-controls="header-status">
       <span></span><span></span><span></span>
     </button>
 
+    <!-- Estado del sistema -->
     <div class="header-status" id="header-status" role="status" aria-live="polite">
-      <span class="status-item"><span class="status-dot" aria-hidden="true"></span>SISTEMA ACTIVO</span>
-      <span class="status-item" id="clock-display" aria-label="Hora actual">--:--:--</span>
-      <span class="status-item status-libs">MATH · PLOTLY · OCR</span>
+      <span class="status-item">
+        <span class="status-dot" aria-hidden="true"></span>ACTIVO
+      </span>
+      <time class="status-item" id="clock-display" aria-label="Hora actual">--:--:--</time>
+      <span class="status-item status-libs" aria-hidden="true">MATH·PLOT·OCR</span>
     </div>
   </header>
 
-  <!-- ════════════════════════════════════════════════════
-       PANEL DE HISTORIAL (drawer lateral)
-       ════════════════════════════════════════════════════ -->
-  <aside class="history-drawer" id="history-drawer" aria-label="Historial de cálculos" aria-hidden="true">
+  <!-- ═══════════════════════════════════════════════
+       DRAWER DE HISTORIAL
+       ═══════════════════════════════════════════════ -->
+  <aside class="history-drawer" id="history-drawer" role="complementary" aria-label="Historial de cálculos"
+    aria-hidden="true">
     <div class="history-header">
-      <div class="history-title">
-        <span>🕐</span> HISTORIAL DE CÁLCULOS
-      </div>
+      <h2 class="history-title">
+        <span aria-hidden="true">🕐</span> HISTORIAL DE CÁLCULOS
+      </h2>
       <div class="history-header-actions">
-        <button class="btn-small" onclick="exportPDF()" title="Exportar PDF">📄 PDF</button>
-        <button class="btn-small" onclick="exportExcel()" title="Exportar Excel">📊 XLS</button>
-        <button class="btn-small btn-small-danger" onclick="clearHistory()" title="Limpiar historial">🗑
-          LIMPIAR</button>
-        <button class="history-close-btn" onclick="toggleHistoryPanel()" aria-label="Cerrar historial">✕</button>
+        <button class="btn-small" type="button" onclick="QC.export.toPDF()">📄 PDF</button>
+        <button class="btn-small" type="button" onclick="QC.export.toExcel()">📊 XLS</button>
+        <button class="btn-small btn-small-danger" type="button" onclick="QC.history.clearAll()">🗑 LIMPIAR</button>
+        <button class="history-close-btn" type="button" onclick="QC.history.toggle()"
+          aria-label="Cerrar historial">✕</button>
       </div>
     </div>
 
-    <!-- Buscador dentro del historial -->
     <div class="history-search-wrap">
-      <input type="search" id="history-search" class="history-search" placeholder="🔍  Buscar en historial..."
-        oninput="filterHistory(this.value)" aria-label="Buscar en historial" />
+      <label for="history-search" class="sr-only">Buscar en historial</label>
+      <input type="search" id="history-search" class="history-search" placeholder="🔍  Buscar expresión o resultado…"
+        autocomplete="off" autocorrect="off" spellcheck="false" oninput="QC.history.filter(this.value)" />
     </div>
 
-    <!-- Lista de entradas -->
     <div class="history-list" id="history-list" role="list" aria-live="polite">
-      <div class="history-empty" id="history-empty">
-        <div class="history-empty-icon">📭</div>
-        <div class="history-empty-text">Aún no hay cálculos guardados.<br>¡Empieza a calcular!</div>
+      <div class="history-empty" id="history-empty" role="listitem">
+        <div class="history-empty-icon" aria-hidden="true">📭</div>
+        <p class="history-empty-text">
+          Aún no hay cálculos guardados.<br>¡Empieza a calcular!
+        </p>
       </div>
     </div>
 
-    <!-- Footer con conteo -->
-    <div class="history-footer">
-      <span id="history-count-label">0 registros</span>
-      <span class="history-footer-note">Guardado en localStorage</span>
-    </div>
+    <footer class="history-footer">
+      <span id="history-count-label" aria-live="polite">0 registros</span>
+      <span class="history-footer-note" aria-hidden="true">💾 localStorage</span>
+    </footer>
   </aside>
 
-  <!-- Backdrop para cerrar el drawer en móvil -->
-  <div class="history-backdrop" id="history-backdrop" onclick="toggleHistoryPanel()"></div>
+  <!-- Backdrop para cerrar el drawer -->
+  <div class="history-backdrop" id="history-backdrop" aria-hidden="true" onclick="QC.history.toggle()"></div>
 
-  <!-- ════════════════════════════════════════════════════
-       LAYOUT PRINCIPAL  (3 columnas desktop)
-       ════════════════════════════════════════════════════ -->
-  <div class="main-layout" id="main-layout">
+  <!-- ═══════════════════════════════════════════════
+       LAYOUT PRINCIPAL (3 columnas desktop)
+       ═══════════════════════════════════════════════ -->
+  <main class="main-layout" id="main-layout" role="main">
 
-    <!-- ─────────────────────────────────────────
-         COLUMNA 1 · CALCULADORA
-         ───────────────────────────────────────── -->
-    <aside class="calc-panel" id="calc-panel" aria-label="Panel de entrada">
+    <!-- ─── COLUMNA 1 · CALCULADORA ─── -->
+    <aside class="calc-panel" id="calc-panel" aria-label="Panel de calculadora">
 
       <!-- Display -->
-      <section class="display-section">
-        <div class="display-label">// EXPRESIÓN</div>
+      <section class="display-section" aria-label="Display de expresión">
+        <p class="display-label" aria-hidden="true">// EXPRESIÓN</p>
         <div class="display-main" id="display-main">
-          <div id="input-display" contenteditable="true" spellcheck="false" role="textbox"
+          <div id="input-display" contenteditable="true" spellcheck="false" inputmode="text" role="textbox"
             aria-label="Expresión matemática" aria-multiline="false"></div>
-          <div id="result-display" aria-live="polite" aria-label="Vista previa del resultado"></div>
-          <!-- Indicador de escritura -->
+          <div id="result-display" aria-live="polite" aria-label="Vista previa"></div>
           <div class="display-typing-indicator" id="typing-indicator" aria-hidden="true">
             <span></span><span></span><span></span>
           </div>
@@ -146,242 +280,240 @@
 
       <!-- Tabs de modo -->
       <nav class="mode-tabs" role="tablist" aria-label="Modo de calculadora">
-        <button class="mode-tab active" data-mode="basic" role="tab" aria-selected="true"
-          onclick="switchMode('basic')">BÁSICO</button>
-        <button class="mode-tab" data-mode="algebra" role="tab" aria-selected="false"
-          onclick="switchMode('algebra')">ÁLGEBRA</button>
-        <button class="mode-tab" data-mode="stats" role="tab" aria-selected="false"
-          onclick="switchMode('stats')">STATS</button>
+        <button class="mode-tab active" type="button" data-mode="basic" role="tab" aria-selected="true"
+          onclick="QC.calc.switchMode('basic')">BÁSICO</button>
+        <button class="mode-tab" type="button" data-mode="algebra" role="tab" aria-selected="false"
+          onclick="QC.calc.switchMode('algebra')">ÁLGEBRA</button>
+        <button class="mode-tab" type="button" data-mode="stats" role="tab" aria-selected="false"
+          onclick="QC.calc.switchMode('stats')">STATS</button>
       </nav>
 
-      <!-- ── TECLADO VIRTUAL ── -->
-      <div class="keyboard-section" id="keyboard-section">
+      <!-- Teclado virtual -->
+      <div class="keyboard-section" id="keyboard-section" role="group" aria-label="Teclado virtual">
 
-        <!-- Control -->
-        <div class="key-group-label">// CONTROL</div>
+        <p class="key-group-label" aria-hidden="true">// CONTROL</p>
         <div class="key-row key-row-4">
-          <button class="key key-clear" onclick="clearAll()" aria-label="Borrar todo">AC</button>
-          <button class="key key-clear" onclick="deleteLast()" aria-label="Borrar último">⌫</button>
-          <button class="key key-op" onclick="insertText('(')" aria-label="Paréntesis izquierdo">(</button>
-          <button class="key key-op" onclick="insertText(')')" aria-label="Paréntesis derecho">)</button>
+          <button class="key key-clear" type="button" onclick="QC.calc.clearAll()" aria-label="Borrar todo">AC</button>
+          <button class="key key-clear" type="button" onclick="QC.calc.deleteLast()"
+            aria-label="Borrar último">⌫</button>
+          <button class="key key-op" type="button" onclick="QC.calc.insert('(')">(</button>
+          <button class="key key-op" type="button" onclick="QC.calc.insert(')')">)</button>
         </div>
 
-        <!-- Operadores -->
-        <div class="key-group-label">// OPERADORES</div>
+        <p class="key-group-label" aria-hidden="true">// OPERADORES</p>
         <div class="key-row key-row-5">
-          <button class="key key-op" onclick="insertText('+')">+</button>
-          <button class="key key-op" onclick="insertText('-')">−</button>
-          <button class="key key-op" onclick="insertText('*')">×</button>
-          <button class="key key-op" onclick="insertText('/')">÷</button>
-          <button class="key key-op" onclick="insertText('^')">^</button>
+          <button class="key key-op" type="button" onclick="QC.calc.insert('+')">+</button>
+          <button class="key key-op" type="button" onclick="QC.calc.insert('-')">−</button>
+          <button class="key key-op" type="button" onclick="QC.calc.insert('*')">×</button>
+          <button class="key key-op" type="button" onclick="QC.calc.insert('/')">÷</button>
+          <button class="key key-op" type="button" onclick="QC.calc.insert('^')">^</button>
         </div>
 
-        <!-- Dígitos -->
-        <div class="key-group-label">// DÍGITOS</div>
+        <p class="key-group-label" aria-hidden="true">// DÍGITOS</p>
         <div class="key-row key-row-5">
-          <button class="key" onclick="insertText('7')">7</button>
-          <button class="key" onclick="insertText('8')">8</button>
-          <button class="key" onclick="insertText('9')">9</button>
-          <button class="key" onclick="insertText('4')">4</button>
-          <button class="key" onclick="insertText('5')">5</button>
+          <button class="key" type="button" onclick="QC.calc.insert('7')">7</button>
+          <button class="key" type="button" onclick="QC.calc.insert('8')">8</button>
+          <button class="key" type="button" onclick="QC.calc.insert('9')">9</button>
+          <button class="key" type="button" onclick="QC.calc.insert('4')">4</button>
+          <button class="key" type="button" onclick="QC.calc.insert('5')">5</button>
         </div>
         <div class="key-row key-row-5">
-          <button class="key" onclick="insertText('6')">6</button>
-          <button class="key" onclick="insertText('1')">1</button>
-          <button class="key" onclick="insertText('2')">2</button>
-          <button class="key" onclick="insertText('3')">3</button>
-          <button class="key" onclick="insertText('0')">0</button>
+          <button class="key" type="button" onclick="QC.calc.insert('6')">6</button>
+          <button class="key" type="button" onclick="QC.calc.insert('1')">1</button>
+          <button class="key" type="button" onclick="QC.calc.insert('2')">2</button>
+          <button class="key" type="button" onclick="QC.calc.insert('3')">3</button>
+          <button class="key" type="button" onclick="QC.calc.insert('0')">0</button>
         </div>
         <div class="key-row key-row-4">
-          <button class="key" onclick="insertText('.')">.</button>
-          <button class="key key-op" onclick="insertText('e')">E</button>
-          <button class="key key-op" onclick="insertText('pi')">π</button>
-          <button class="key key-equals" onclick="calculate()" aria-label="Calcular">=</button>
+          <button class="key" type="button" onclick="QC.calc.insert('.')">.</button>
+          <button class="key key-op" type="button" onclick="QC.calc.insert('e')">E</button>
+          <button class="key key-op" type="button" onclick="QC.calc.insert('pi')">π</button>
+          <button class="key key-equals" type="button" onclick="QC.calc.calculate()" aria-label="Calcular">=</button>
         </div>
 
-        <!-- ─ PANEL BÁSICO ─ -->
-        <div id="fn-basic">
-          <div class="key-group-label">// FUNCIONES</div>
+        <!-- Panel BÁSICO -->
+        <div id="fn-basic" role="tabpanel">
+          <p class="key-group-label" aria-hidden="true">// FUNCIONES</p>
           <div class="key-row key-row-6">
-            <button class="key key-fn" onclick="insertText('sqrt(')">√</button>
-            <button class="key key-fn" onclick="insertText('abs(')">|x|</button>
-            <button class="key key-fn" onclick="insertText('log(')">ln</button>
-            <button class="key key-fn" onclick="insertText('log10(')">log₁₀</button>
-            <button class="key key-fn" onclick="insertText('exp(')">eˣ</button>
-            <button class="key key-fn" onclick="insertText('factorial(')">n!</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('sqrt(')">√</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('abs(')">|x|</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('log(')">ln</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('log10(')">log₁₀</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('exp(')">eˣ</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('factorial(')">n!</button>
           </div>
           <div class="key-row key-row-6">
-            <button class="key key-fn" onclick="insertText('sin(')">sin</button>
-            <button class="key key-fn" onclick="insertText('cos(')">cos</button>
-            <button class="key key-fn" onclick="insertText('tan(')">tan</button>
-            <button class="key key-fn" onclick="insertText('asin(')">arcsin</button>
-            <button class="key key-fn" onclick="insertText('acos(')">arccos</button>
-            <button class="key key-fn" onclick="insertText('atan(')">arctan</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('sin(')">sin</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('cos(')">cos</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('tan(')">tan</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('asin(')">arcsin</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('acos(')">arccos</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('atan(')">arctan</button>
           </div>
           <div class="key-row key-row-4">
-            <button class="key key-fn" onclick="insertText('ceil(')">⌈x⌉</button>
-            <button class="key key-fn" onclick="insertText('floor(')">⌊x⌋</button>
-            <button class="key key-fn" onclick="insertText('round(')">≈</button>
-            <button class="key key-fn" onclick="insertText('nthRoot(')">ⁿ√</button>
-          </div>
-        </div>
-
-        <!-- ─ PANEL ÁLGEBRA ─ -->
-        <div id="fn-algebra" style="display:none">
-          <div class="key-group-label">// ÁLGEBRA SIMBÓLICA</div>
-          <div class="key-row key-row-4">
-            <button class="key key-fn" onclick="insertText('x')">x</button>
-            <button class="key key-fn" onclick="insertText('y')">y</button>
-            <button class="key key-fn" onclick="insertText('z')">z</button>
-            <button class="key key-fn" onclick="insertText('=')"> = </button>
-          </div>
-          <div class="key-row key-row-4">
-            <button class="key key-action" onclick="runDerivative()">d/dx</button>
-            <button class="key key-action" onclick="runIntegral()">∫dx</button>
-            <button class="key key-action" onclick="runSimplify()">simplify</button>
-            <button class="key key-action" onclick="runSolve()">solve</button>
-          </div>
-          <div class="key-row key-row-4">
-            <button class="key key-fn" onclick="insertText('matrix([[')">Mat</button>
-            <button class="key key-fn" onclick="insertText('det(')">det</button>
-            <button class="key key-fn" onclick="insertText('inv(')">A⁻¹</button>
-            <button class="key key-fn" onclick="insertText('transpose(')">Aᵀ</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('ceil(')">⌈x⌉</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('floor(')">⌊x⌋</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('round(')">≈</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('nthRoot(')">ⁿ√</button>
           </div>
         </div>
 
-        <!-- ─ PANEL STATS ─ -->
-        <div id="fn-stats" style="display:none">
-          <div class="key-group-label">// ESTADÍSTICAS — ingresar [1,2,3,...]</div>
+        <!-- Panel ÁLGEBRA -->
+        <div id="fn-algebra" style="display:none" role="tabpanel">
+          <p class="key-group-label" aria-hidden="true">// ÁLGEBRA SIMBÓLICA</p>
           <div class="key-row key-row-4">
-            <button class="key key-fn" onclick="insertText('mean(')">μ</button>
-            <button class="key key-fn" onclick="insertText('median(')">med</button>
-            <button class="key key-fn" onclick="insertText('mode(')">moda</button>
-            <button class="key key-fn" onclick="insertText('std(')">σ</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('x')">x</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('y')">y</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('z')">z</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('=')"> = </button>
           </div>
           <div class="key-row key-row-4">
-            <button class="key key-fn" onclick="insertText('variance(')">σ²</button>
-            <button class="key key-fn" onclick="insertText('sum(')">Σ</button>
-            <button class="key key-fn" onclick="insertText('min(')">min</button>
-            <button class="key key-fn" onclick="insertText('max(')">max</button>
+            <button class="key key-action" type="button" onclick="QC.calc.runDerivative()">d/dx</button>
+            <button class="key key-action" type="button" onclick="QC.calc.runIntegral()">∫dx</button>
+            <button class="key key-action" type="button" onclick="QC.calc.runSimplify()">simplify</button>
+            <button class="key key-action" type="button" onclick="QC.calc.runSolve()">solve</button>
           </div>
           <div class="key-row key-row-4">
-            <button class="key key-action" onclick="runRegression()">regresión</button>
-            <button class="key key-action" onclick="runHistogram()">histograma</button>
-            <button class="key key-fn" onclick="insertText('combinations(')">C(n,k)</button>
-            <button class="key key-fn" onclick="insertText('permutations(')">P(n,k)</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('matrix([[')">Mat</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('det(')">det</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('inv(')">A⁻¹</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('transpose(')">Aᵀ</button>
+          </div>
+        </div>
+
+        <!-- Panel STATS -->
+        <div id="fn-stats" style="display:none" role="tabpanel">
+          <p class="key-group-label" aria-hidden="true">// ESTADÍSTICAS — ingresar [1,2,3,…]</p>
+          <div class="key-row key-row-4">
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('mean(')">μ</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('median(')">med</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('mode(')">moda</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('std(')">σ</button>
+          </div>
+          <div class="key-row key-row-4">
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('variance(')">σ²</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('sum(')">Σ</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('min(')">min</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('max(')">max</button>
+          </div>
+          <div class="key-row key-row-4">
+            <button class="key key-action" type="button" onclick="QC.calc.runRegression()">regresión</button>
+            <button class="key key-action" type="button" onclick="QC.calc.runHistogram()">histograma</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('combinations(')">C(n,k)</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('permutations(')">P(n,k)</button>
           </div>
         </div>
 
         <!-- Botón calcular principal -->
         <div class="calc-btn-wrap">
-          <button class="key key-calc-main" onclick="calculate()" aria-label="Calcular y mostrar pasos">
-            <span class="calc-btn-icon">▶</span>
+          <button class="key key-calc-main" type="button" onclick="QC.calc.calculate()"
+            aria-label="Calcular y mostrar pasos (Enter)">
+            <span class="calc-btn-icon" aria-hidden="true">▶</span>
             <span>CALCULAR Y MOSTRAR PASOS</span>
           </button>
         </div>
       </div><!-- /keyboard-section -->
 
-      <!-- ── OCR ── -->
+      <!-- OCR -->
       <section class="ocr-section" aria-label="Reconocimiento de imagen">
-        <div class="ocr-title">OCR — RECONOCIMIENTO DE IMAGEN</div>
+        <p class="ocr-title" aria-hidden="true">OCR — IMAGEN A ECUACIÓN</p>
         <div class="ocr-drop-zone" id="ocr-drop-zone" role="button" tabindex="0"
-          aria-label="Zona para subir imagen con ecuación" onclick="document.getElementById('ocr-file-input').click()"
-          onkeydown="if(event.key==='Enter'||event.key===' ')document.getElementById('ocr-file-input').click()">
+          aria-label="Arrastra o haz clic para subir imagen con ecuación"
+          onclick="document.getElementById('ocr-file-input').click()"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('ocr-file-input').click()}">
           <div class="ocr-icon-wrap">
-            <span class="ocr-icon">📷</span>
-            <div class="ocr-ripple" id="ocr-ripple"></div>
+            <span class="ocr-icon" aria-hidden="true">📷</span>
+            <div class="ocr-ripple" aria-hidden="true"></div>
           </div>
-          <div class="ocr-text">Arrastra una imagen o <span>haz clic para subir</span></div>
-          <div class="ocr-hint">PNG · JPG · BMP · TIFF</div>
+          <p class="ocr-text">Arrastra una imagen o <span>haz clic para subir</span></p>
+          <p class="ocr-hint" aria-hidden="true">PNG · JPG · BMP · WEBP · TIFF</p>
         </div>
-        <input type="file" id="ocr-file-input" accept="image/*" onchange="handleOCRFile(event)" aria-hidden="true" />
+        <input type="file" id="ocr-file-input" accept="image/png,image/jpeg,image/bmp,image/webp,image/tiff"
+          onchange="QC.ocr.handleFile(event)" aria-hidden="true" tabindex="-1" />
 
-        <div class="ocr-progress" id="ocr-progress" aria-live="polite">
+        <div class="ocr-progress" id="ocr-progress" role="status" aria-live="polite" style="display:none">
           <div class="progress-bar-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <div class="progress-bar-fill" id="ocr-bar"></div>
-            <div class="progress-bar-glow" id="ocr-glow"></div>
+            <div class="progress-bar-glow" aria-hidden="true"></div>
           </div>
-          <div class="ocr-status" id="ocr-status">Inicializando OCR...</div>
+          <p class="ocr-status" id="ocr-status">Inicializando…</p>
         </div>
       </section>
 
     </aside><!-- /calc-panel -->
 
-    <!-- ─────────────────────────────────────────
-         COLUMNA 2 · GRÁFICAS  (desktop: col 2)
-         ───────────────────────────────────────── -->
-    <section class="graph-panel" id="graph-panel" aria-label="Panel de gráficas">
-      <div class="panel-header">
+    <!-- ─── COLUMNA 2 · GRÁFICAS ─── -->
+    <section class="graph-panel" id="graph-panel" aria-label="Visualización gráfica">
+      <header class="panel-header">
         <div class="panel-title">
-          <span class="panel-title-icon">📊</span>
+          <span aria-hidden="true">📈</span>
           VISUALIZACIÓN GRÁFICA
           <span class="badge">PLOTLY.JS</span>
         </div>
-      </div>
+      </header>
 
       <div class="graph-controls">
         <div class="graph-input-wrap">
           <label for="graph-expr" class="sr-only">Función a graficar</label>
           <input type="text" class="graph-input" id="graph-expr" placeholder="f(x) = sin(x) * cos(x/2)"
-            value="sin(x) * cos(x/2)" aria-label="Función para graficar" />
+            value="sin(x) * cos(x/2)" autocomplete="off" spellcheck="false" aria-label="Función para graficar" />
         </div>
-        <div class="graph-btn-group">
-          <button class="btn-graph btn-graph-2d" onclick="plot2D()" aria-label="Graficar en 2D">📈 2D</button>
-          <button class="btn-graph btn-graph-3d" onclick="plot3D()" aria-label="Graficar en 3D">🌐 3D</button>
-          <button class="btn-graph btn-clear-graph" onclick="clearGraph()" aria-label="Limpiar gráfica">✕</button>
+        <div class="graph-btn-group" role="group" aria-label="Tipo de gráfica">
+          <button class="btn-graph btn-graph-2d" type="button" onclick="QC.graph.plot2D()" aria-label="Gráfica 2D">📈
+            2D</button>
+          <button class="btn-graph btn-graph-3d" type="button" onclick="QC.graph.plot3D()" aria-label="Superficie 3D">🌐
+            3D</button>
+          <button class="btn-graph btn-clear-graph" type="button" onclick="QC.graph.clear()"
+            aria-label="Limpiar gráfica">✕</button>
         </div>
       </div>
 
       <div id="graph-container" role="img" aria-label="Área de la gráfica">
-        <div class="graph-placeholder" id="graph-placeholder">
+        <div class="graph-placeholder" id="graph-placeholder" aria-hidden="true">
           <div class="graph-placeholder-icon">∿</div>
-          <div class="graph-placeholder-text">Ingresa una función y elige 2D o 3D</div>
+          <p class="graph-placeholder-text">Ingresa una función y elige 2D o 3D</p>
         </div>
       </div>
 
-      <!-- Overlay de carga para gráfica -->
-      <div class="graph-loading" id="graph-loading" aria-hidden="true">
+      <div class="graph-loading" id="graph-loading" aria-hidden="true" role="status">
         <div class="graph-loading-ring"></div>
         <span>Calculando…</span>
       </div>
     </section>
 
-    <!-- ─────────────────────────────────────────
-         COLUMNA 3 · PASOS  (desktop: col 3)
-         ───────────────────────────────────────── -->
-    <section class="steps-panel" id="steps-panel" aria-label="Panel de pasos">
-      <div class="panel-header">
+    <!-- ─── COLUMNA 3 · PASOS ─── -->
+    <section class="steps-panel" id="steps-panel" aria-label="Resolución paso a paso">
+      <header class="panel-header">
         <div class="panel-title">
-          <span class="panel-title-icon">∑</span>
+          <span aria-hidden="true">∑</span>
           RESOLUCIÓN PASO A PASO
-          <span class="badge" id="steps-count">0 PASOS</span>
+          <span class="badge" id="steps-count" aria-live="polite">0 PASOS</span>
         </div>
-        <div class="panel-actions">
-          <button class="btn-small" onclick="replaySteps()" aria-label="Repetir animación de pasos">↺ REPETIR</button>
-          <button class="btn-small btn-small-danger" onclick="clearSteps()" aria-label="Limpiar pasos">✕
-            LIMPIAR</button>
+        <div class="panel-actions" role="group">
+          <button class="btn-small" type="button" onclick="QC.steps.replay()" aria-label="Repetir animación">↺
+            REPETIR</button>
+          <button class="btn-small btn-small-danger" type="button" onclick="QC.steps.clear()"
+            aria-label="Limpiar pasos">✕ LIMPIAR</button>
         </div>
-      </div>
+      </header>
 
       <div class="steps-container" id="steps-container" role="log" aria-live="polite" aria-label="Pasos de resolución">
         <div class="empty-state" id="steps-empty">
-          <div class="empty-state-icon">∑</div>
-          <div class="empty-state-text">Ingresa una expresión y presiona<br><strong>CALCULAR</strong> para ver los pasos
-          </div>
+          <div class="empty-state-icon" aria-hidden="true">∑</div>
+          <p class="empty-state-text">
+            Ingresa una expresión y presiona<br>
+            <strong>CALCULAR</strong> para ver los pasos
+          </p>
         </div>
       </div>
     </section>
 
-  </div><!-- /main-layout -->
+  </main><!-- /main-layout -->
 
-  <!-- ════════════════════════════════════════════════════
-       TOASTS
-       ════════════════════════════════════════════════════ -->
-  <div class="toast-container" id="toast-container" role="alert" aria-live="assertive"></div>
+  <!-- Toasts -->
+  <div class="toast-container" id="toast-container" role="alert" aria-live="assertive" aria-atomic="true"></div>
 
-  <!-- ════════════════════════════════════════════════════
-       SCRIPTS
-       ════════════════════════════════════════════════════ -->
+  <!-- Script principal -->
   <script src="script.js"></script>
 </body>
 
