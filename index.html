@@ -5,35 +5,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#050a0f" />
-  <meta name="description"
-    content="QuantumCalc — Calculadora científica con álgebra, gráficas 2D/3D, OCR e historial" />
+  <meta name="description" content="QuantumCalc — Cálculo simbólico, álgebra, gráficas 2D/3D, OCR e historial" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>QuantumCalc — Calculadora Científica</title>
 
-  <!--
-    ╔══════════════════════════════════════════════════════╗
-    ║  FAVICON  — SVG embebido, nítido a cualquier tamaño  ║
-    ║  Símbolo ∑ en cyan sobre fondo oscuro + punto verde  ║
-    ║  Soportado: Chrome/Firefox/Edge/Safari 12+           ║
-    ╚══════════════════════════════════════════════════════╝
-  -->
+  <!-- FAVICON SVG embebido -->
   <link rel="icon" type="image/svg+xml"
     href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23050a0f'/%3E%3Crect x='1.5' y='1.5' width='61' height='61' rx='10.5' fill='none' stroke='%2300d4ff' stroke-width='2.5' opacity='.55'/%3E%3Ctext x='32' y='47' font-size='40' text-anchor='middle' font-family='Georgia%2Cserif' fill='%2300d4ff'%3E%CE%A3%3C/text%3E%3Ccircle cx='52' cy='12' r='6' fill='%2300ff88' opacity='.85'/%3E%3C/svg%3E" />
-
-  <!-- Fallback PNG para navegadores sin soporte SVG favicon -->
-  <link rel="icon" type="image/png" sizes="32x32"
-    href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAAAlwSFlzAAALEwAACxMBAJqcGAAAADRJREFUWAntw4EAAAAAgKD9qRepAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADgzQMBAAHmQQAAAABJRU5ErkJggg==" />
-
-  <!-- Apple Touch Icon 180×180 para "Agregar a inicio" en iOS -->
   <link rel="apple-touch-icon"
     href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='38' fill='%23050a0f'/%3E%3Crect x='4' y='4' width='172' height='172' rx='34' fill='none' stroke='%2300d4ff' stroke-width='5' opacity='.55'/%3E%3Ctext x='90' y='132' font-size='110' text-anchor='middle' font-family='Georgia%2Cserif' fill='%2300d4ff'%3E%CE%A3%3C/text%3E%3Ccircle cx='148' cy='34' r='18' fill='%2300ff88' opacity='.85'/%3E%3C/svg%3E" />
 
-  <!--
-    ╔══════════════════════════════════════════╗
-    ║  FUENTES — carga no bloqueante (swap)    ║
-    ╚══════════════════════════════════════════╝
-  -->
+  <!-- Fuentes no bloqueantes -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet"
@@ -44,38 +27,25 @@
       href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" />
   </noscript>
 
-  <!--
-    ╔══════════════════════════════════════════════════════════╗
-    ║  GSAP — síncrono (necesario antes del DOM para anims)    ║
-    ║  Fallback stub si CDN falla → sin animaciones, sin crash ║
-    ╚══════════════════════════════════════════════════════════╝
-  -->
+  <!-- GSAP síncrono con fallback stub -->
   <script>
     window.__gsapStub = function () {
       const noop = () => ({ to: noop, fromTo: noop, call: noop, set: noop, kill: noop });
       window.gsap = { to: noop, fromTo: noop, set: noop, timeline: () => noop(), kill: noop };
-      console.warn('[QC] GSAP no disponible — animaciones desactivadas');
     };
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.4/gsap.min.js" onerror="window.__gsapStub()"></script>
 
-  <!--
-    ╔══════════════════════════════════════════════════════╗
-    ║  MATH.JS — diferido; onerror muestra banner de aviso ║
-    ╚══════════════════════════════════════════════════════╝
-  -->
+  <!-- Math.js diferido -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.2/math.js" defer
     onerror="document.getElementById('qc-nomath').hidden=false"></script>
 
   <!--
-    ╔══════════════════════════════════════════════════════════════╗
-    ║  LAZY LOADERS — librerías pesadas se descargan solo cuando  ║
-    ║  se necesitan por primera vez (Plotly, Tesseract, jsPDF,    ║
-    ║  SheetJS). Reduce ~3 MB de carga inicial.                   ║
-    ╚══════════════════════════════════════════════════════════════╝
+    ═══════════════════════════════════════════════════════════
+    LAZY LOADERS — Plotly, Tesseract, jsPDF, SheetJS, Nerdamer
+    ═══════════════════════════════════════════════════════════
   -->
   <script>
-    /* ---- utilidad genérica ---- */
     function _lazyLoad(urls, onDone, onFail) {
       let idx = 0;
       function next() {
@@ -83,65 +53,77 @@
         const s = document.createElement('script');
         s.src = urls[idx++];
         s.onload = next;
-        s.onerror = onFail || (() => console.error('[QC] Fallo carga: ' + s.src));
+        s.onerror = onFail || (() => { });
         document.head.appendChild(s);
       }
       next();
     }
 
     /* ---- Plotly ---- */
-    let _plotlyPending = [];
+    let _pp = [];
     function ensurePlotly(cb) {
       if (window.Plotly) { cb(); return; }
-      _plotlyPending.push(cb);
-      if (_plotlyPending.length > 1) return; // ya cargando
-      _lazyLoad(
-        ['https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js'],
-        () => { _plotlyPending.forEach(fn => fn()); _plotlyPending = []; },
-        () => { window.QC && QC.ui.toast('Plotly no disponible. Verifica conexión.', 'error'); _plotlyPending = []; }
-      );
+      _pp.push(cb); if (_pp.length > 1) return;
+      _lazyLoad(['https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js'],
+        () => { _pp.forEach(f => f()); _pp = []; },
+        () => { window.QC && QC.ui.toast('Plotly no disponible.', 'error'); _pp = []; });
     }
 
     /* ---- Tesseract ---- */
-    let _tessPending = [];
+    let _tp = [];
     function ensureTesseract(cb) {
       if (window.Tesseract) { cb(); return; }
-      _tessPending.push(cb);
-      if (_tessPending.length > 1) return;
-      _lazyLoad(
-        ['https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js'],
-        () => { _tessPending.forEach(fn => fn()); _tessPending = []; },
-        () => { window.QC && QC.ui.toast('Tesseract no disponible. OCR no funcionará.', 'error'); _tessPending = []; }
-      );
+      _tp.push(cb); if (_tp.length > 1) return;
+      _lazyLoad(['https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.0.4/tesseract.min.js'],
+        () => { _tp.forEach(f => f()); _tp = []; },
+        () => { window.QC && QC.ui.toast('Tesseract no disponible.', 'error'); _tp = []; });
     }
 
     /* ---- jsPDF + AutoTable ---- */
-    let _jsPDFPending = [];
+    let _jp = [];
     function ensureJsPDF(cb) {
       if (window.jspdf && window.jspdf.jsPDF) { cb(); return; }
-      _jsPDFPending.push(cb);
-      if (_jsPDFPending.length > 1) return;
-      _lazyLoad(
-        [
-          'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-          'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'
-        ],
-        () => { _jsPDFPending.forEach(fn => fn()); _jsPDFPending = []; },
-        () => { window.QC && QC.ui.toast('jsPDF no disponible.', 'error'); _jsPDFPending = []; }
-      );
+      _jp.push(cb); if (_jp.length > 1) return;
+      _lazyLoad([
+        'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js'
+      ], () => { _jp.forEach(f => f()); _jp = []; },
+        () => { window.QC && QC.ui.toast('jsPDF no disponible.', 'error'); _jp = []; });
     }
 
     /* ---- SheetJS ---- */
-    let _xlsxPending = [];
+    let _xp = [];
     function ensureXLSX(cb) {
       if (window.XLSX) { cb(); return; }
-      _xlsxPending.push(cb);
-      if (_xlsxPending.length > 1) return;
-      _lazyLoad(
-        ['https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'],
-        () => { _xlsxPending.forEach(fn => fn()); _xlsxPending = []; },
-        () => { window.QC && QC.ui.toast('SheetJS no disponible.', 'error'); _xlsxPending = []; }
-      );
+      _xp.push(cb); if (_xp.length > 1) return;
+      _lazyLoad(['https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'],
+        () => { _xp.forEach(f => f()); _xp = []; },
+        () => { window.QC && QC.ui.toast('SheetJS no disponible.', 'error'); _xp = []; });
+    }
+
+    /* ---- Nerdamer (motor simbólico) ----
+       Nerdamer requiere carga secuencial:
+       core → algebra → calculus → extra
+    */
+    let _np = [];
+    let _nerdLoaded = false;
+    function ensureNerdamer(cb) {
+      if (_nerdLoaded && window.nerdamer) { cb(); return; }
+      _np.push(cb); if (_np.length > 1) return;
+      _lazyLoad([
+        'https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/nerdamer.core.js',
+        'https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Algebra.js',
+        'https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Calculus.js',
+        'https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Solve.js',
+        'https://cdn.jsdelivr.net/npm/nerdamer@1.1.13/Extra.js'
+      ], () => {
+        _nerdLoaded = true;
+        _np.forEach(f => f()); _np = [];
+        console.log('[QC] Nerdamer cargado correctamente');
+      }, () => {
+        window.QC && QC.ui.toast('Nerdamer no disponible — cálculo simbólico limitado.', 'warn');
+        _np = []; _nerdLoaded = false;
+      });
     }
   </script>
 
@@ -150,24 +132,19 @@
 
 <body>
 
-  <!-- Aviso si math.js no cargó -->
+  <!-- Banner si Math.js falla -->
   <div id="qc-nomath" hidden style="position:fixed;top:0;left:0;right:0;z-index:99999;padding:12px 20px;
            background:#ff4466;color:#fff;font-family:monospace;font-size:.82rem;
            text-align:center;letter-spacing:.06em;user-select:none">
     ⚠ Math.js no pudo cargarse. Verifica tu conexión a Internet y recarga la página.
   </div>
 
-  <!-- Overlays decorativos -->
   <div class="scanlines" aria-hidden="true"></div>
   <div class="bg-noise" aria-hidden="true"></div>
 
-  <!-- ═══════════════════════════════════════════════
-       HEADER
-       ═══════════════════════════════════════════════ -->
+  <!-- ══════════ HEADER ══════════ -->
   <header class="header" id="site-header" role="banner">
-
-    <!-- Logo con SVG inline para la página -->
-    <div class="header-logo" role="img" aria-label="QuantumCalc v2.6">
+    <div class="header-logo" role="img" aria-label="QuantumCalc v3.0">
       <svg class="logo-svg" viewBox="0 0 32 32" width="26" height="26" aria-hidden="true" focusable="false">
         <rect width="32" height="32" rx="6" fill="#050a0f" />
         <rect x=".8" y=".8" width="30.4" height="30.4" rx="5.2" fill="none" stroke="#00d4ff" stroke-width="1.2"
@@ -176,98 +153,78 @@
         <circle cx="26" cy="6" r="3.5" fill="#00ff88" opacity=".85" />
       </svg>
       <span class="logo-text">QuantumCalc</span>
-      <span class="ver" aria-hidden="true">v2.6</span>
+      <span class="ver" aria-hidden="true">v3.0</span>
     </div>
 
-    <!-- Controles: historial + exportación -->
-    <div class="header-controls" role="toolbar" aria-label="Historial y exportación">
+    <div class="header-controls" role="toolbar" aria-label="Herramientas">
       <button class="hdr-btn hdr-btn-history" id="history-toggle-btn" type="button" onclick="QC.history.toggle()"
-        aria-label="Abrir historial de cálculos" aria-expanded="false" title="Historial (H)">
+        aria-label="Abrir historial" aria-expanded="false" title="Historial (H)">
         <span class="hdr-btn-icon" aria-hidden="true">🕐</span>
         <span class="hdr-btn-label">HISTORIAL</span>
         <span class="history-badge" id="history-badge" aria-live="polite">0</span>
       </button>
-      <button class="hdr-btn hdr-btn-pdf" type="button" onclick="QC.export.toPDF()"
-        aria-label="Exportar historial a PDF" title="Exportar PDF">
+      <button class="hdr-btn hdr-btn-pdf" type="button" onclick="QC.export.toPDF()" aria-label="Exportar PDF"
+        title="PDF">
         <span class="hdr-btn-icon" aria-hidden="true">📄</span>
         <span class="hdr-btn-label">PDF</span>
       </button>
-      <button class="hdr-btn hdr-btn-excel" type="button" onclick="QC.export.toExcel()"
-        aria-label="Exportar historial a Excel" title="Exportar Excel">
+      <button class="hdr-btn hdr-btn-excel" type="button" onclick="QC.export.toExcel()" aria-label="Exportar Excel"
+        title="Excel">
         <span class="hdr-btn-icon" aria-hidden="true">📊</span>
         <span class="hdr-btn-label">EXCEL</span>
       </button>
     </div>
 
-    <!-- Hamburguesa (solo móvil) -->
-    <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Abrir menú de estado"
-      aria-expanded="false" aria-controls="header-status">
+    <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Menú" aria-expanded="false"
+      aria-controls="header-status">
       <span></span><span></span><span></span>
     </button>
 
-    <!-- Estado del sistema -->
     <div class="header-status" id="header-status" role="status" aria-live="polite">
-      <span class="status-item">
-        <span class="status-dot" aria-hidden="true"></span>ACTIVO
-      </span>
-      <time class="status-item" id="clock-display" aria-label="Hora actual">--:--:--</time>
-      <span class="status-item status-libs" aria-hidden="true">MATH·PLOT·OCR</span>
+      <span class="status-item"><span class="status-dot" aria-hidden="true"></span>ACTIVO</span>
+      <time class="status-item" id="clock-display">--:--:--</time>
+      <span class="status-item status-libs" aria-hidden="true" id="libs-status">MATH·NERD·PLOT·OCR</span>
     </div>
   </header>
 
-  <!-- ═══════════════════════════════════════════════
-       DRAWER DE HISTORIAL
-       ═══════════════════════════════════════════════ -->
-  <aside class="history-drawer" id="history-drawer" role="complementary" aria-label="Historial de cálculos"
-    aria-hidden="true">
+  <!-- ══════════ DRAWER HISTORIAL ══════════ -->
+  <aside class="history-drawer" id="history-drawer" role="complementary" aria-label="Historial" aria-hidden="true">
     <div class="history-header">
-      <h2 class="history-title">
-        <span aria-hidden="true">🕐</span> HISTORIAL DE CÁLCULOS
-      </h2>
+      <h2 class="history-title"><span aria-hidden="true">🕐</span> HISTORIAL</h2>
       <div class="history-header-actions">
         <button class="btn-small" type="button" onclick="QC.export.toPDF()">📄 PDF</button>
         <button class="btn-small" type="button" onclick="QC.export.toExcel()">📊 XLS</button>
         <button class="btn-small btn-small-danger" type="button" onclick="QC.history.clearAll()">🗑 LIMPIAR</button>
-        <button class="history-close-btn" type="button" onclick="QC.history.toggle()"
-          aria-label="Cerrar historial">✕</button>
+        <button class="history-close-btn" type="button" onclick="QC.history.toggle()" aria-label="Cerrar">✕</button>
       </div>
     </div>
-
     <div class="history-search-wrap">
-      <label for="history-search" class="sr-only">Buscar en historial</label>
+      <label for="history-search" class="sr-only">Buscar</label>
       <input type="search" id="history-search" class="history-search" placeholder="🔍  Buscar expresión o resultado…"
-        autocomplete="off" autocorrect="off" spellcheck="false" oninput="QC.history.filter(this.value)" />
+        autocomplete="off" spellcheck="false" oninput="QC.history.filter(this.value)" />
     </div>
-
     <div class="history-list" id="history-list" role="list" aria-live="polite">
       <div class="history-empty" id="history-empty" role="listitem">
         <div class="history-empty-icon" aria-hidden="true">📭</div>
-        <p class="history-empty-text">
-          Aún no hay cálculos guardados.<br>¡Empieza a calcular!
-        </p>
+        <p class="history-empty-text">Aún no hay cálculos.<br>¡Empieza a calcular!</p>
       </div>
     </div>
-
     <footer class="history-footer">
       <span id="history-count-label" aria-live="polite">0 registros</span>
       <span class="history-footer-note" aria-hidden="true">💾 localStorage</span>
     </footer>
   </aside>
-
-  <!-- Backdrop para cerrar el drawer -->
   <div class="history-backdrop" id="history-backdrop" aria-hidden="true" onclick="QC.history.toggle()"></div>
 
-  <!-- ═══════════════════════════════════════════════
-       LAYOUT PRINCIPAL (3 columnas desktop)
-       ═══════════════════════════════════════════════ -->
+  <!-- ══════════ LAYOUT PRINCIPAL ══════════ -->
   <main class="main-layout" id="main-layout" role="main">
 
     <!-- ─── COLUMNA 1 · CALCULADORA ─── -->
-    <aside class="calc-panel" id="calc-panel" aria-label="Panel de calculadora">
+    <aside class="calc-panel" id="calc-panel" aria-label="Calculadora">
 
       <!-- Display -->
-      <section class="display-section" aria-label="Display de expresión">
-        <p class="display-label" aria-hidden="true">// EXPRESIÓN</p>
+      <section class="display-section" aria-label="Display">
+        <p class="display-label" aria-hidden="true">// EXPRESIÓN SIMBÓLICA</p>
         <div class="display-main" id="display-main">
           <div id="input-display" contenteditable="true" spellcheck="false" inputmode="text" role="textbox"
             aria-label="Expresión matemática" aria-multiline="false"></div>
@@ -276,12 +233,19 @@
             <span></span><span></span><span></span>
           </div>
         </div>
+        <!-- Detección de tipo de operación -->
+        <div class="op-detector" id="op-detector" aria-live="polite">
+          <span class="op-type-label" id="op-type-label"></span>
+          <span class="op-engine-label" id="op-engine-label"></span>
+        </div>
       </section>
 
       <!-- Tabs de modo -->
-      <nav class="mode-tabs" role="tablist" aria-label="Modo de calculadora">
+      <nav class="mode-tabs" role="tablist" aria-label="Modo">
         <button class="mode-tab active" type="button" data-mode="basic" role="tab" aria-selected="true"
           onclick="QC.calc.switchMode('basic')">BÁSICO</button>
+        <button class="mode-tab" type="button" data-mode="symbolic" role="tab" aria-selected="false"
+          onclick="QC.calc.switchMode('symbolic')">SIMBÓLICO</button>
         <button class="mode-tab" type="button" data-mode="algebra" role="tab" aria-selected="false"
           onclick="QC.calc.switchMode('algebra')">ÁLGEBRA</button>
         <button class="mode-tab" type="button" data-mode="stats" role="tab" aria-selected="false"
@@ -293,9 +257,8 @@
 
         <p class="key-group-label" aria-hidden="true">// CONTROL</p>
         <div class="key-row key-row-4">
-          <button class="key key-clear" type="button" onclick="QC.calc.clearAll()" aria-label="Borrar todo">AC</button>
-          <button class="key key-clear" type="button" onclick="QC.calc.deleteLast()"
-            aria-label="Borrar último">⌫</button>
+          <button class="key key-clear" type="button" onclick="QC.calc.clearAll()">AC</button>
+          <button class="key key-clear" type="button" onclick="QC.calc.deleteLast()">⌫</button>
           <button class="key key-op" type="button" onclick="QC.calc.insert('(')">(</button>
           <button class="key key-op" type="button" onclick="QC.calc.insert(')')">)</button>
         </div>
@@ -326,9 +289,9 @@
         </div>
         <div class="key-row key-row-4">
           <button class="key" type="button" onclick="QC.calc.insert('.')">.</button>
-          <button class="key key-op" type="button" onclick="QC.calc.insert('e')">E</button>
+          <button class="key key-op" type="button" onclick="QC.calc.insert('e')">e</button>
           <button class="key key-op" type="button" onclick="QC.calc.insert('pi')">π</button>
-          <button class="key key-equals" type="button" onclick="QC.calc.calculate()" aria-label="Calcular">=</button>
+          <button class="key key-equals" type="button" onclick="QC.calc.calculate()">=</button>
         </div>
 
         <!-- Panel BÁSICO -->
@@ -358,9 +321,104 @@
           </div>
         </div>
 
+        <!-- Panel SIMBÓLICO (NUEVO) -->
+        <div id="fn-symbolic" style="display:none" role="tabpanel">
+          <p class="key-group-label nerd-label" aria-hidden="true">
+            ∫ CÁLCULO SIMBÓLICO
+            <span class="nerd-badge">NERDAMER</span>
+          </p>
+
+          <!-- Integrales -->
+          <p class="key-subgroup" aria-hidden="true">INTEGRALES</p>
+          <div class="key-row key-row-3">
+            <button class="key key-sym key-integral" type="button" onclick="QC.symbolic.startIntegral()"
+              aria-label="Integral indefinida">
+              <span class="key-sym-main">∫ dx</span>
+              <span class="key-sym-sub">indefinida</span>
+            </button>
+            <button class="key key-sym key-integral" type="button" onclick="QC.symbolic.startDefiniteIntegral()"
+              aria-label="Integral definida">
+              <span class="key-sym-main">∫ₐᵇ dx</span>
+              <span class="key-sym-sub">definida</span>
+            </button>
+            <button class="key key-sym key-integral" type="button" onclick="QC.symbolic.startPartialFractions()"
+              aria-label="Fracciones parciales">
+              <span class="key-sym-main">A/B+C/D</span>
+              <span class="key-sym-sub">fracc. parc.</span>
+            </button>
+          </div>
+
+          <!-- Derivadas y límites -->
+          <p class="key-subgroup" aria-hidden="true">DERIVADAS &amp; LÍMITES</p>
+          <div class="key-row key-row-3">
+            <button class="key key-sym key-deriv" type="button" onclick="QC.symbolic.startDerivative(1)"
+              aria-label="Primera derivada">
+              <span class="key-sym-main">d/dx</span>
+              <span class="key-sym-sub">1ª derivada</span>
+            </button>
+            <button class="key key-sym key-deriv" type="button" onclick="QC.symbolic.startDerivative(2)"
+              aria-label="Segunda derivada">
+              <span class="key-sym-main">d²/dx²</span>
+              <span class="key-sym-sub">2ª derivada</span>
+            </button>
+            <button class="key key-sym key-limit" type="button" onclick="QC.symbolic.startLimit()" aria-label="Límite">
+              <span class="key-sym-main">lim</span>
+              <span class="key-sym-sub">límite</span>
+            </button>
+          </div>
+
+          <!-- Álgebra simbólica -->
+          <p class="key-subgroup" aria-hidden="true">ÁLGEBRA SIMBÓLICA</p>
+          <div class="key-row key-row-3">
+            <button class="key key-sym key-expand" type="button" onclick="QC.symbolic.expandExpr()"
+              aria-label="Expandir">
+              <span class="key-sym-main">expand</span>
+              <span class="key-sym-sub">expandir</span>
+            </button>
+            <button class="key key-sym key-factor" type="button" onclick="QC.symbolic.factorExpr()"
+              aria-label="Factorizar">
+              <span class="key-sym-main">factor</span>
+              <span class="key-sym-sub">factorizar</span>
+            </button>
+            <button class="key key-sym key-simplify" type="button" onclick="QC.symbolic.simplifyExpr()"
+              aria-label="Simplificar">
+              <span class="key-sym-main">simplify</span>
+              <span class="key-sym-sub">simplificar</span>
+            </button>
+          </div>
+          <div class="key-row key-row-3">
+            <button class="key key-sym key-solve" type="button" onclick="QC.symbolic.solveEquation()"
+              aria-label="Resolver ecuación">
+              <span class="key-sym-main">solve</span>
+              <span class="key-sym-sub">ecuación</span>
+            </button>
+            <button class="key key-sym key-subst" type="button" onclick="QC.symbolic.substituteVar()"
+              aria-label="Sustituir variable">
+              <span class="key-sym-main">sub x=</span>
+              <span class="key-sym-sub">sustituir</span>
+            </button>
+            <button class="key key-sym key-taylor" type="button" onclick="QC.symbolic.taylorSeries()"
+              aria-label="Serie de Taylor">
+              <span class="key-sym-main">Taylor</span>
+              <span class="key-sym-sub">serie</span>
+            </button>
+          </div>
+
+          <!-- Variables simbólicas -->
+          <p class="key-subgroup" aria-hidden="true">VARIABLES</p>
+          <div class="key-row key-row-6">
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('x')">x</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('y')">y</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('t')">t</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('n')">n</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('a')">a</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('b')">b</button>
+          </div>
+        </div>
+
         <!-- Panel ÁLGEBRA -->
         <div id="fn-algebra" style="display:none" role="tabpanel">
-          <p class="key-group-label" aria-hidden="true">// ÁLGEBRA SIMBÓLICA</p>
+          <p class="key-group-label" aria-hidden="true">// ÁLGEBRA MATRICIAL</p>
           <div class="key-row key-row-4">
             <button class="key key-fn" type="button" onclick="QC.calc.insert('x')">x</button>
             <button class="key key-fn" type="button" onclick="QC.calc.insert('y')">y</button>
@@ -414,8 +472,8 @@
         </div>
       </div><!-- /keyboard-section -->
 
-      <!-- OCR -->
-      <section class="ocr-section" aria-label="Reconocimiento de imagen">
+      <!-- OCR mejorado -->
+      <section class="ocr-section" aria-label="OCR — Imagen a ecuación">
         <p class="ocr-title" aria-hidden="true">OCR — IMAGEN A ECUACIÓN</p>
         <div class="ocr-drop-zone" id="ocr-drop-zone" role="button" tabindex="0"
           aria-label="Arrastra o haz clic para subir imagen con ecuación"
@@ -425,12 +483,11 @@
             <span class="ocr-icon" aria-hidden="true">📷</span>
             <div class="ocr-ripple" aria-hidden="true"></div>
           </div>
-          <p class="ocr-text">Arrastra una imagen o <span>haz clic para subir</span></p>
+          <p class="ocr-text">Arrastra o <span>haz clic para subir</span></p>
           <p class="ocr-hint" aria-hidden="true">PNG · JPG · BMP · WEBP · TIFF</p>
         </div>
         <input type="file" id="ocr-file-input" accept="image/png,image/jpeg,image/bmp,image/webp,image/tiff"
           onchange="QC.ocr.handleFile(event)" aria-hidden="true" tabindex="-1" />
-
         <div class="ocr-progress" id="ocr-progress" role="status" aria-live="polite" style="display:none">
           <div class="progress-bar-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <div class="progress-bar-fill" id="ocr-bar"></div>
@@ -451,30 +508,24 @@
           <span class="badge">PLOTLY.JS</span>
         </div>
       </header>
-
       <div class="graph-controls">
         <div class="graph-input-wrap">
           <label for="graph-expr" class="sr-only">Función a graficar</label>
           <input type="text" class="graph-input" id="graph-expr" placeholder="f(x) = sin(x) * cos(x/2)"
-            value="sin(x) * cos(x/2)" autocomplete="off" spellcheck="false" aria-label="Función para graficar" />
+            value="sin(x) * cos(x/2)" autocomplete="off" spellcheck="false" />
         </div>
         <div class="graph-btn-group" role="group" aria-label="Tipo de gráfica">
-          <button class="btn-graph btn-graph-2d" type="button" onclick="QC.graph.plot2D()" aria-label="Gráfica 2D">📈
-            2D</button>
-          <button class="btn-graph btn-graph-3d" type="button" onclick="QC.graph.plot3D()" aria-label="Superficie 3D">🌐
-            3D</button>
-          <button class="btn-graph btn-clear-graph" type="button" onclick="QC.graph.clear()"
-            aria-label="Limpiar gráfica">✕</button>
+          <button class="btn-graph btn-graph-2d" type="button" onclick="QC.graph.plot2D()">📈 2D</button>
+          <button class="btn-graph btn-graph-3d" type="button" onclick="QC.graph.plot3D()">🌐 3D</button>
+          <button class="btn-graph btn-clear-graph" type="button" onclick="QC.graph.clear()">✕</button>
         </div>
       </div>
-
-      <div id="graph-container" role="img" aria-label="Área de la gráfica">
+      <div id="graph-container" role="img" aria-label="Gráfica interactiva">
         <div class="graph-placeholder" id="graph-placeholder" aria-hidden="true">
           <div class="graph-placeholder-icon">∿</div>
           <p class="graph-placeholder-text">Ingresa una función y elige 2D o 3D</p>
         </div>
       </div>
-
       <div class="graph-loading" id="graph-loading" aria-hidden="true" role="status">
         <div class="graph-loading-ring"></div>
         <span>Calculando…</span>
@@ -490,30 +541,25 @@
           <span class="badge" id="steps-count" aria-live="polite">0 PASOS</span>
         </div>
         <div class="panel-actions" role="group">
-          <button class="btn-small" type="button" onclick="QC.steps.replay()" aria-label="Repetir animación">↺
-            REPETIR</button>
-          <button class="btn-small btn-small-danger" type="button" onclick="QC.steps.clear()"
-            aria-label="Limpiar pasos">✕ LIMPIAR</button>
+          <button class="btn-small" type="button" onclick="QC.steps.replay()">↺ REPETIR</button>
+          <button class="btn-small btn-small-danger" type="button" onclick="QC.steps.clear()">✕ LIMPIAR</button>
         </div>
       </header>
-
-      <div class="steps-container" id="steps-container" role="log" aria-live="polite" aria-label="Pasos de resolución">
+      <div class="steps-container" id="steps-container" role="log" aria-live="polite">
         <div class="empty-state" id="steps-empty">
-          <div class="empty-state-icon" aria-hidden="true">∑</div>
+          <div class="empty-state-icon" aria-hidden="true">∫</div>
           <p class="empty-state-text">
-            Ingresa una expresión y presiona<br>
-            <strong>CALCULAR</strong> para ver los pasos
+            Usa el panel <strong>SIMBÓLICO</strong> para integrales,<br>
+            derivadas y límites con pasos detallados
           </p>
         </div>
       </div>
     </section>
 
-  </main><!-- /main-layout -->
+  </main>
 
-  <!-- Toasts -->
   <div class="toast-container" id="toast-container" role="alert" aria-live="assertive" aria-atomic="true"></div>
 
-  <!-- Script principal -->
   <script src="script.js"></script>
 </body>
 
