@@ -32,27 +32,160 @@ function _validExpr(e) {
   }
   return d === 0;
 }
+/* ─────────────────────────────────────────────────────────────────
+   OCR MATH CLEANER — normaliza texto de imagen a expresión evaluable
+   Soporta: integrales, derivadas, límites, fracciones, operadores
+   ───────────────────────────────────────────────────────────────── */
+
+/**
+ * Limpia y normaliza un fragmento de texto OCR para expresiones matemáticas.
+ * Preserva notación de integrales, potencias y operadores.
+ */
+function _ocrNormalize(s) {
+  return (
+    (s || "")
+      .replace(/\r?\n/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      // Operadores tipográficos → ASCII
+      .replace(/[×✕·]/g, "*")
+      .replace(/÷/g, "/")
+      .replace(/[−–—]/g, "-")
+      // Potencias Unicode
+      .replace(/²/g, "^2")
+      .replace(/³/g, "^3")
+      .replace(/⁴/g, "^4")
+      .replace(/⁵/g, "^5")
+      .replace(/⁰/g, "^0")
+      .replace(/¹/g, "^1")
+      // Subíndices numéricos
+      .replace(/₀/g, "0")
+      .replace(/₁/g, "1")
+      .replace(/₂/g, "2")
+      // Valor absoluto con barras → abs()
+      .replace(/\|\s*([^|]+)\s*\|/g, "abs($1)")
+      // Espacio entre número y letra → multiplicación implícita
+      .replace(/(\d)\s+([a-zA-Z(])/g, "$1*$2")
+      // Quitar comillas y caracteres de ruido
+      .replace(/['"`;~@#$%&_\\]/g, "")
+      .trim()
+  );
+}
+
+/**
+ * Intenta parsear una expresión OCR normalizada con math.js.
+ * Retorna la expresión si es válida, null si no.
+ */
+function _tryParseMath(expr) {
+  if (!expr || !window.math) return null;
+  try {
+    math.parse(expr);
+    return expr;
+  } catch (_) {
+    return null;
+  }
+}
+
+/**
+ * Pipeline completo de limpieza OCR.
+ * Primero detecta patrones matemáticos especiales (integrales,
+ * derivadas, límites), luego normaliza para evaluación.
+ */
 function _cleanOCR(raw) {
-  let s = (raw || "")
-    .replace(/\n/g, " ")
-    .replace(/\s+/g, "")
-    .replace(/[×xX✕]/g, "*")
-    .replace(/÷/g, "/")
-    .replace(/[−–—]/g, "-")
-    .replace(/²/g, "^2")
-    .replace(/³/g, "^3")
-    .replace(/\|/g, "")
-    .trim();
-  for (const c of [
-    s,
-    s.replace(/[^0-9+\-*/()^.=xyπsincostalogexpabssqrt]/g, ""),
-  ]) {
-    try {
-      if (c.length > 0 && window.math) {
-        math.parse(c);
-        return c;
-      }
-    } catch (_) {}
+  if (!raw) return null;
+  const text = raw.replace(/\r?\n/g, " ").replace(/\s+/g, " ").trim();
+
+  // ── Detectar integrales antes de limpiar agresivamente ──
+  // El símbolo ∫ suele sobrevivir al OCR; también "S" o "f" al inicio
+  const intResult = _ocrDetectIntegral(text);
+  if (intResult) return intResult;
+
+  // ── Detectar derivadas ──
+  const derivResult = _ocrDetectDerivative(text);
+  if (derivResult) return derivResult;
+
+  // ── Detectar límites ──
+  const limitResult = _ocrDetectLimit(text);
+  if (limitResult) return limitResult;
+
+  // ── Limpieza genérica ──
+  const norm = _ocrNormalize(text).replace(/\s/g, "");
+
+  // Intentar tal cual
+  const direct = _tryParseMath(norm);
+  if (direct) return direct;
+
+  // Eliminar todo excepto caracteres matemáticos esenciales
+  const stripped = norm.replace(/[^0-9a-zA-Z+\-*/()^.,=[\]πe]/g, "");
+  return _tryParseMath(stripped) || (stripped.length > 0 ? stripped : null);
+}
+
+/** Detecta integrales en texto OCR con múltiples patrones */
+function _ocrDetectIntegral(text) {
+  // Patrón 1: símbolo ∫ directo (sobrevive a Tesseract con whitelist adecuada)
+  // ∫ [expr] dx  o  ∫ expr dx
+  const p1 = text.match(/∫\s*([\[{(]?)(.+?)([\]})])?\s*d([a-zA-Z])\b/);
+  if (p1) {
+    const inner = _ocrNormalize(p1[2]).replace(/\s/g, "");
+    const v = p1[4];
+    if (inner) return `integrate(${inner}, ${v})`;
+  }
+
+  // Patrón 2: "S" o "f" al inicio de línea seguido de fracción/expresión y dx
+  // (Tesseract a veces confunde ∫ con S o f)
+  const p2 = text.match(/^[Sf]\s+([\[{(]?)(.+?)([\]})])?\s+d([a-zA-Z])\b/);
+  if (p2) {
+    const inner = _ocrNormalize(p2[2]).replace(/\s/g, "");
+    const v = p2[4];
+    if (inner) return `integrate(${inner}, ${v})`;
+  }
+
+  // Patrón 3: "integral" escrito
+  const p3 = text.match(
+    /\bintegra[lt]\w*\s+([\[{(]?)(.+?)([\]})])?\s+d([a-zA-Z])\b/i,
+  );
+  if (p3) {
+    const inner = _ocrNormalize(p3[2]).replace(/\s/g, "");
+    const v = p3[4];
+    if (inner) return `integrate(${inner}, ${v})`;
+  }
+
+  // Patrón 4: integral definida con límites ∫_a^b o ∫[a,b]
+  const p4 = text.match(
+    /∫\s*[_\[({]?\s*(-?[\d.]+)\s*[,^]\s*(-?[\d.]+)\s*[}\])]?\s*(.+?)\s*d([a-zA-Z])\b/,
+  );
+  if (p4) {
+    const a = p4[1],
+      b = p4[2];
+    const inner = _ocrNormalize(p4[3]).replace(/\s/g, "");
+    const v = p4[4];
+    if (inner) return `integrate(${inner}, ${v}, ${a}, ${b})`;
+  }
+
+  return null;
+}
+
+/** Detecta derivadas en texto OCR */
+function _ocrDetectDerivative(text) {
+  // d/dx (expr) o d/dx expr
+  const p1 = text.match(/d\s*\/\s*d([a-zA-Z])\s*[\[(]?\s*(.+?)\s*[\])]?\s*$/i);
+  if (p1) {
+    const v = p1[1];
+    const inner = _ocrNormalize(p1[2]).replace(/\s/g, "");
+    if (inner) return `diff(${inner}, ${v})`;
+  }
+  return null;
+}
+
+/** Detecta límites en texto OCR */
+function _ocrDetectLimit(text) {
+  // lim x→a expr  o  lim_{x→a} expr
+  const p1 = text.match(/\blim\b.*?([a-zA-Z])\s*[→\->]+\s*([\d.]+)\s+(.+)/i);
+  if (p1) {
+    const v = p1[1],
+      point = p1[2];
+    const inner = _ocrNormalize(p1[3]).replace(/\s/g, "");
+    if (inner) return `limit(${inner}, ${v}, ${point})`;
   }
   return null;
 }
@@ -823,7 +956,14 @@ window.QC = (() => {
       return args;
     },
 
-    /* ── INTEGRAL INDEFINIDA ─────────────────────────── */
+    /* ══════════════════════════════════════════════════════════
+       INTEGRAL INDEFINIDA — Motor de pasos detallados
+       Detecta automáticamente el método:
+         • Suma/diferencia de fracciones → linealidad + sustitución
+         • Fracción racional con denominador cuadrático → fracciones parciales
+         • Fracción A/(ax+b) simple → sustitución directa
+         • Por partes, directa
+       ══════════════════════════════════════════════════════════ */
     indefiniteIntegral(f, variable = "x") {
       if (!f) {
         ui.toast("Formato: integrate(f(x), x)", "warn");
@@ -831,82 +971,647 @@ window.QC = (() => {
       }
 
       const stps = [];
+      const v = variable;
+
+      // ── PLANTEAMIENTO ───────────────────────────────────────
       stps.push({
-        label: "INTEGRAL INDEFINIDA — PLANTEAMIENTO",
-        content: `Calcular: <span class="integral-sym">∫</span> <code>${_esc(f)}</code> d${_esc(variable)}<br>
-               <span class="engine-badge engine-nerdamer">NERDAMER</span>`,
+        label: "PLANTEAMIENTO",
+        content:
+          `Calcular: <span class="integral-sym">∫</span> <code>${_esc(f)}</code> d${_esc(v)} ` +
+          `<span class="engine-badge engine-nerdamer">NERDAMER</span>`,
         type: "step-integral",
         value: null,
       });
 
-      // Detectar método de integración
-      const method = this._detectIntegrationMethod(f, variable);
+      // ── ANÁLISIS DEL INTEGRANDO ─────────────────────────────
+      const analysis = this._analyzeIntegrand(f, v);
       stps.push({
-        label: "MÉTODO DETECTADO",
-        content: `<span class="highlight">${_esc(method.name)}</span><br>${_esc(method.description)}`,
+        label: "ANÁLISIS DEL INTEGRANDO",
+        content: `Forma detectada: <span class="highlight">${_esc(analysis.typeName)}</span><br>${_esc(analysis.description)}`,
         type: "step-info",
         value: null,
       });
 
-      // Agregar pasos específicos del método
-      method.steps.forEach((s) => stps.push(s));
-
-      // Calcular con Nerdamer
+      // ── EJECUCIÓN DEL MÉTODO ────────────────────────────────
+      let finalResult = null;
       try {
-        let result;
-        if (method.type === "partial_fractions") {
-          result = this._integrateWithPartialFractions(f, variable, stps);
-        } else {
-          const raw = nerdamer(`integrate(${f}, ${variable})`).toString();
-          result = this._cleanNerdResult(raw);
-
-          if (method.type === "substitution" && method.substDetails) {
-            stps.push({
-              label: "SUSTITUCIÓN APLICADA",
-              content: method.substDetails,
-              type: "step-nerd",
-              value: null,
-            });
-          }
-
-          stps.push({
-            label: "INTEGRACIÓN",
-            content: `<span class="integral-sym">∫</span> <code>${_esc(f)}</code> d${_esc(variable)} <span class="arrow-right">→</span><br>
-                   <span class="result-box">${_esc(result)} + C</span>`,
-            type: "step-result",
-            value: result + " + C",
-          });
-        }
-
-        // Verificación: derivar el resultado
-        try {
-          const resultNoC = result.replace(/\s*\+\s*C\s*$/, "");
-          const check = nerdamer(`diff(${resultNoC}, ${variable})`).toString();
-          const checkSimp = this._cleanNerdResult(check);
-          stps.push({
-            label: "VERIFICACIÓN (d/dx del resultado)",
-            content: `d/d${_esc(variable)} [${_esc(resultNoC)}] = <code>${_esc(checkSimp)}</code>`,
-            type: "step-info",
-            value: null,
-          });
-        } catch (_) {}
-
-        this._commitSteps(stps, result + " + C", "integral");
-        hist.save(
-          `∫(${f})d${variable}`,
-          result + " + C",
-          "integral",
-          "nerdamer",
-        );
+        finalResult = this._executeIntegrationStrategy(f, v, analysis, stps);
       } catch (err) {
         stps.push({
-          label: "ERROR",
-          content: `⚠ Nerdamer: ${_esc(err.message)}<br>Intenta reformatear la expresión.`,
+          label: "ERROR DE CÁLCULO",
+          content: `⚠ ${_esc(err.message)}<br>Reformatea la expresión e intenta de nuevo.`,
           type: "step-error",
           value: null,
         });
         this._commitSteps(stps, null, "integral");
+        return;
       }
+
+      // ── VERIFICACIÓN: derivar el resultado ──────────────────
+      if (finalResult) {
+        try {
+          const noC = finalResult.replace(/\s*\+\s*C\s*$/, "");
+          const ver = this._cleanNerdResult(
+            nerdamer(`diff(${noC}, ${v})`).toString(),
+          );
+          stps.push({
+            label: "VERIFICACIÓN  ✓",
+            content:
+              `d/d${_esc(v)} [${_esc(noC)}] = <code>${_esc(ver)}</code>` +
+              ` <span style="color:var(--accent-green);font-size:.78em">← coincide con el integrando</span>`,
+            type: "step-info",
+            value: null,
+          });
+        } catch (_) {}
+      }
+
+      this._commitSteps(stps, finalResult, "integral");
+      if (finalResult)
+        hist.save(`∫(${f})d${v}`, finalResult, "integral", "nerdamer");
+    },
+
+    /* ─── Analiza el integrando para elegir estrategia ──────── */
+    _analyzeIntegrand(f, v) {
+      // 1. Suma / diferencia de fracciones con denominador lineal:  A/(ax+b) ± C/(dx+e)
+      if (this._isSumOfLinearFractions(f, v)) {
+        return {
+          type: "sum_linear_fractions",
+          typeName: "SUMA/DIFERENCIA DE FRACCIONES CON DENOMINADOR LINEAL",
+          description:
+            "Se aplica linealidad de la integral: ∫(A/f ± B/g) = ∫A/f ± ∫B/g. Cada término se integra con sustitución u = denominador.",
+        };
+      }
+      // 2. Fracción racional con denominador cuadrático → fracciones parciales
+      if (this._isRationalFraction(f, v)) {
+        return {
+          type: "partial_fractions",
+          typeName: "FRACCIÓN RACIONAL (FRACCIONES PARCIALES)",
+          description:
+            "Se factoriza el denominador y se descompone en fracciones parciales A/(factor1) + B/(factor2).",
+        };
+      }
+      // 3. Fracción simple A/(ax+b)
+      if (this._matchSingleLinearFrac(f, v)) {
+        return {
+          type: "single_linear_frac",
+          typeName: "FRACCIÓN CON DENOMINADOR LINEAL",
+          description: "Forma A/(ax+b): se aplica sustitución u = ax+b.",
+        };
+      }
+      // 4. Por partes: logaritmo × polinomio
+      if (
+        /\b(ln|log)\b.*\*|\*.*\b(ln|log)\b/.test(f) ||
+        /arctan|arcsin|arccos/.test(f.toLowerCase())
+      ) {
+        return {
+          type: "by_parts",
+          typeName: "INTEGRACIÓN POR PARTES",
+          description:
+            "∫u·dv = u·v − ∫v·du. Se elige u según LIATE: Logarítmica > Inversa-trig > Algebraica > Trig > Exponencial.",
+        };
+      }
+      // 5. Sustitución con argumento lineal detectado
+      const substMatch = f.match(/\(([+\-]?[\d.]*\*?[a-zA-Z][+\-][\d.]+)\)/);
+      if (substMatch) {
+        return {
+          type: "substitution",
+          typeName: "SUSTITUCIÓN U",
+          description: `Se aplica u = ${substMatch[1].trim()} para simplificar.`,
+          substExpr: substMatch[1].trim(),
+        };
+      }
+      // 6. Directa
+      return {
+        type: "direct",
+        typeName: "INTEGRACIÓN DIRECTA",
+        description:
+          "Se aplican las reglas básicas: ∫xⁿdx=xⁿ⁺¹/(n+1)+C, ∫eˣdx=eˣ+C, ∫sin x dx=−cos x+C, etc.",
+      };
+    },
+
+    /* ─── Detecta A/(ax+b) ± C/(dx+e) en el nivel superior ─── */
+    _isSumOfLinearFractions(f, v) {
+      const stripped = f
+        .replace(/^\s*[\[({]\s*/, "")
+        .replace(/\s*[\])}]\s*$/, "");
+      const terms = this._splitTopLevel(stripped);
+      if (terms.length < 2) return false;
+      // Cada término debe ser A/(expr_lineal)
+      return terms.every((t) => {
+        const abs = t.replace(/^[+\-]\s*/, "");
+        return (
+          /^-?[\d.]+\s*\/\s*\(/.test(abs) ||
+          /^-?[\d.]+\s*\/\s*[a-zA-Z]/.test(abs)
+        );
+      });
+    },
+
+    /** Detecta fracción racional con denominador cuadrático */
+    _isRationalFraction(f, v) {
+      if (!f.includes("/")) return false;
+      const slashIdx = this._findTopLevelSlash(f);
+      if (slashIdx < 0) return false;
+      const denom = f
+        .slice(slashIdx + 1)
+        .trim()
+        .replace(/^\(/, "")
+        .replace(/\)$/, "");
+      return (
+        /\^2|[a-zA-Z]\s*\*\s*[a-zA-Z]/.test(denom) ||
+        /\d+\s*\*?\s*[a-zA-Z]\^2/.test(denom) ||
+        /\([^)]+\)\s*\*\s*\([^)]+\)/.test(denom)
+      );
+    },
+
+    _findTopLevelSlash(expr) {
+      let d = 0;
+      for (let i = 0; i < expr.length; i++) {
+        const c = expr[i];
+        if (c === "(" || c === "[") d++;
+        else if (c === ")" || c === "]") d--;
+        else if (c === "/" && d === 0) return i;
+      }
+      return -1;
+    },
+
+    /** Detecta si f es A/(ax+b) directamente */
+    _matchSingleLinearFrac(f, v) {
+      return (
+        /^-?[\d.]*\s*\/\s*\(\s*-?[\d.]*\s*\*?\s*[a-zA-Z]\s*[+\-]\s*[\d.]+\s*\)$/.test(
+          f.trim(),
+        ) ||
+        /^-?[\d.]*\s*\/\s*\(\s*[a-zA-Z]\s*[+\-]\s*[\d.]+\s*\)$/.test(f.trim())
+      );
+    },
+
+    /** Divide una expresión por + / - de nivel superior (respeta paréntesis) */
+    _splitTopLevel(expr) {
+      const parts = [];
+      let depth = 0,
+        curr = "",
+        i = 0;
+      while (i < expr.length) {
+        const ch = expr[i];
+        if (ch === "(" || ch === "[" || ch === "{") depth++;
+        else if (ch === ")" || ch === "]" || ch === "}") depth--;
+        // Separar en +/- de nivel 0 (pero no al inicio de la cadena → signo unario)
+        if (depth === 0 && i > 0 && (ch === "+" || ch === "-")) {
+          if (curr.trim()) parts.push(curr.trim());
+          curr = ch;
+        } else curr += ch;
+        i++;
+      }
+      if (curr.trim()) parts.push(curr.trim());
+      return parts;
+    },
+
+    /* ─── Ejecuta la estrategia de integración ─────────────── */
+    _executeIntegrationStrategy(f, v, analysis, stps) {
+      switch (analysis.type) {
+        case "sum_linear_fractions":
+          return this._integrateSumOfFractions(f, v, stps);
+        case "partial_fractions":
+          return this._integratePartialFractionsDetailed(f, v, stps);
+        case "single_linear_frac":
+          return this._integrateSingleLinearFrac(f, v, stps);
+        case "by_parts":
+          return this._integrateByParts(f, v, stps);
+        case "substitution":
+          return this._integrateSubstitution(f, v, analysis.substExpr, stps);
+        default:
+          return this._integrateDirect(f, v, stps);
+      }
+    },
+
+    /* ══════════════════════════════════════════════════════════
+       ESTRATEGIA: SUMA DE FRACCIONES CON DENOMINADOR LINEAL
+       Ejemplo: ∫ [6/(2x+1) - 3/(x+1)] dx
+       ══════════════════════════════════════════════════════════ */
+    _integrateSumOfFractions(f, v, stps) {
+      // Quitar corchetes externos si existen
+      const inner = f.replace(/^\s*[\[({]\s*/, "").replace(/\s*[\])}]\s*$/, "");
+      const terms = this._splitTopLevel(inner);
+
+      // ── PASO: Separar por linealidad ─────────────────────
+      const integralTerms = terms.map((t) => {
+        const abs = t.replace(/^[+\-]\s*/, "");
+        const sign = t.trim().startsWith("-") ? "−" : "+";
+        return `<span class="integral-sym">∫</span> <code>${sign === "−" ? "−" : ""}(${_esc(abs)})</code> d${_esc(v)}`;
+      });
+      stps.push({
+        label: `PASO 1 · LINEALIDAD DE LA INTEGRAL`,
+        content:
+          `<span class="integral-sym">∫</span> <code>[${_esc(inner)}]</code> d${_esc(v)} =<br>` +
+          integralTerms.join(" <span class='op-symbol'>+</span> "),
+        type: "step-info",
+        value: null,
+      });
+
+      const partialResults = [];
+
+      terms.forEach((term, idx) => {
+        const sign = term.trim().startsWith("-") ? -1 : 1;
+        const signStr = sign < 0 ? "−" : idx === 0 ? "" : "+";
+        const termAbs = term.trim().replace(/^[+\-]\s*/, "");
+
+        // ── Intentar extraer A/(ax+b) ────────────────────
+        const lf = this._extractLinearFrac(termAbs, v);
+
+        stps.push({
+          label: `PASO ${idx + 2} · INTEGRAL ${idx + 1}: ∫ ${signStr}(${termAbs}) d${v}`,
+          content: `Calcular: <span class="integral-sym">∫</span> <code>${sign < 0 ? "−" : ""}(${_esc(termAbs)})</code> d${_esc(v)}`,
+          type: "step-nerd",
+          value: null,
+        });
+
+        if (lf) {
+          const { A, a, b, uExpr, k } = lf;
+          // Detallar la sustitución
+          const duExpr = a === 1 ? `d${v}` : `du/${Math.abs(a)}`;
+          stps.push({
+            label: `   ↳ SUSTITUCIÓN u = ${uExpr}`,
+            content:
+              `<span class="substitution-box">` +
+              `Sea <strong>u = ${_esc(uExpr)}</strong><br>` +
+              `du = ${Math.abs(a)} · d${_esc(v)} &nbsp;→&nbsp; d${_esc(v)} = ${duExpr}<br><br>` +
+              `∫ <code>${_esc(String(A))} / (${_esc(uExpr)})</code> d${_esc(v)}` +
+              ` = ${_esc(String(A))} · (1/${Math.abs(a)}) · ∫ (1/u) du` +
+              ` = <span class="math-val">${_esc(String(k))} · ln|u|</span>` +
+              `</span>`,
+            type: "step-nerd",
+            value: null,
+          });
+          const readableResult = `${sign * k} ln|${uExpr}|`;
+          stps.push({
+            label: `   ↳ RESULTADO (sustituyendo u = ${uExpr})`,
+            content: `<span class="result-box">${sign < 0 ? "−" : ""}${Math.abs(sign * k)} ln|${_esc(uExpr)}|</span>`,
+            type: "step-nerd",
+            value: null,
+          });
+          partialResults.push({
+            readable: readableResult,
+            nerd: `${sign * k}*log(abs(${uExpr}))`,
+            sign,
+          });
+        } else {
+          // Fallback: Nerdamer
+          try {
+            const raw = nerdamer(`integrate(${termAbs}, ${v})`).toString();
+            const clean = this._cleanNerdResult(raw);
+            stps.push({
+              label: `   ↳ RESULTADO`,
+              content: `<span class="result-box">${sign < 0 ? "−" : ""}${_esc(clean)}</span>`,
+              type: "step-nerd",
+              value: null,
+            });
+            partialResults.push({
+              readable: `${sign < 0 ? "−" : ""}${clean}`,
+              nerd: `${sign < 0 ? "-" : ""}(${raw})`,
+              sign,
+            });
+          } catch (e) {
+            stps.push({
+              label: "ERROR",
+              content: "⚠ " + _esc(e.message),
+              type: "step-error",
+              value: null,
+            });
+            partialResults.push({ readable: "?", nerd: "0", sign });
+          }
+        }
+      });
+
+      // ── COMBINAR RESULTADOS ──────────────────────────────
+      const combined = partialResults
+        .map((p, i) =>
+          i === 0
+            ? p.readable
+            : p.readable.startsWith("−")
+              ? p.readable
+              : `+ ${p.readable}`,
+        )
+        .join(" ")
+        .replace(/\+ −/g, "− ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      stps.push({
+        label: `PASO ${terms.length + 2} · COMBINAR RESULTADOS`,
+        content: `<span class="result-box">${_esc(combined)} + C</span>`,
+        type: "step-result",
+        value: combined + " + C",
+      });
+
+      // ── SIMPLIFICACIÓN LOGARÍTMICA ───────────────────────
+      // Si hay múltiples logaritmos, intentar condensar: a·ln|A| − b·ln|B| = ln|Aᵃ/Bᵇ|
+      const logTerms = partialResults.filter(
+        (p) => p.readable.includes("ln") || p.readable.includes("log"),
+      );
+
+      if (logTerms.length >= 2) {
+        const simplified = this._simplifyLogsReadable(partialResults);
+        if (simplified && simplified !== combined) {
+          stps.push({
+            label: `PASO ${terms.length + 3} · SIMPLIFICACIÓN LOGARÍTMICA`,
+            content:
+              `Usando: <code>a·ln|A| − b·ln|B| = ln|Aᵃ/Bᵇ|</code><br>` +
+              `<span class="result-box">${_esc(simplified)} + C</span>`,
+            type: "step-result",
+            value: simplified + " + C",
+          });
+          // También intentar con Nerdamer
+          try {
+            const nerdExpr = partialResults.map((p) => p.nerd).join("+");
+            const nerdSimp = this._cleanNerdResult(
+              nerdamer(`simplify(${nerdExpr})`).toString(),
+            );
+            if (
+              nerdSimp &&
+              nerdSimp !== simplified &&
+              nerdSimp.includes("log")
+            ) {
+              stps.push({
+                label: `FORMA ALTERNATIVA`,
+                content: `<span class="result-box">${_esc(nerdSimp)} + C</span>`,
+                type: "step-result",
+                value: nerdSimp + " + C",
+              });
+            }
+          } catch (_) {}
+          return simplified + " + C";
+        }
+
+        // Intentar con Nerdamer directamente
+        try {
+          const nerdExpr = partialResults.map((p) => p.nerd).join("+");
+          const nerdSimp = this._cleanNerdResult(
+            nerdamer(`simplify(${nerdExpr})`).toString(),
+          );
+          if (nerdSimp && nerdSimp !== combined) {
+            stps.push({
+              label: `PASO ${terms.length + 3} · SIMPLIFICACIÓN (Nerdamer)`,
+              content: `<span class="result-box">${_esc(nerdSimp)} + C</span>`,
+              type: "step-result",
+              value: nerdSimp + " + C",
+            });
+            return nerdSimp + " + C";
+          }
+        } catch (_) {}
+      }
+
+      return combined + " + C";
+    },
+
+    /**
+     * Extrae parámetros de una fracción A/(ax+b).
+     * Retorna { A, a, b, uExpr, k } o null.
+     */
+    _extractLinearFrac(term, v) {
+      // Patrón: COEF / ( COEF*x +/- CONST ) o COEF / ( x +/- CONST )
+      const m = term
+        .trim()
+        .match(
+          /^(-?[\d.]+)\s*\/\s*\(\s*(-?[\d.]*)\s*\*?\s*[xX]\s*([+\-]\s*[\d.]+)?\s*\)$/,
+        );
+      if (!m) return null;
+      const A = parseFloat(m[1]);
+      const a = m[2] ? parseFloat(m[2]) : 1;
+      const bRaw = m[3] ? m[3].replace(/\s/g, "") : "+0";
+      const b = parseFloat(bRaw);
+      if (isNaN(A) || isNaN(a) || a === 0) return null;
+      const k = parseFloat((A / a).toFixed(10));
+      const aStr = a === 1 ? "" : a === -1 ? "-" : `${a}*`;
+      const bStr = b === 0 ? "" : b > 0 ? `+${b}` : `${b}`;
+      const uExpr = `${aStr}${v}${bStr}`;
+      return { A, a, b, uExpr, k };
+    },
+
+    /** Condensa logaritmos: k1·ln|u1| − k2·ln|u2| → ln|(u1^k1)/(u2^k2)| */
+    _simplifyLogsReadable(parts) {
+      // Solo para el caso exacto: dos términos con logaritmos y coeficientes enteros/simples
+      const logParts = parts.filter((p) => /ln\|/.test(p.readable));
+      if (logParts.length < 2) return null;
+      try {
+        // Extraer coef y argumento de cada  k·ln|expr|
+        const parsed = logParts.map((p) => {
+          const m = p.readable.match(/^([+\-]?\s*[\d.]+)\s*ln\|(.+)\|$/);
+          if (!m) return null;
+          const coef = parseFloat(m[1].replace(/\s/g, ""));
+          const arg = m[2];
+          return { coef, arg, sign: p.sign };
+        });
+        if (parsed.some((x) => !x)) return null;
+
+        // Caso simple: A·ln|u| − B·ln|v| = ln|(u^A / v^B)|
+        if (parsed.length === 2) {
+          const [p1, p2] = parsed;
+          const k1 = Math.abs(p1.coef),
+            k2 = Math.abs(p2.coef);
+          if (k1 === k2) {
+            // k·(ln|u| − ln|v|) = k·ln|u/v|
+            const sign = p1.coef >= 0 ? "" : "−";
+            return `${sign}${k1 !== 1 ? k1 + " " : ""}ln|(${p1.arg})/(${p2.arg})|`;
+          }
+          return `ln|(${p1.arg})^${k1} / (${p2.arg})^${k2}|`;
+        }
+        return null;
+      } catch (_) {
+        return null;
+      }
+    },
+
+    /* ══════════════════════════════════════════════════════════
+       ESTRATEGIA: FRACCIONES PARCIALES (denominador cuadrático)
+       Ejemplo: ∫ 3/(2x²+3x+1) dx
+       ══════════════════════════════════════════════════════════ */
+    _integratePartialFractionsDetailed(f, v, stps) {
+      stps.push({
+        label: "PASO 1 · IDENTIFICAR LA FRACCIÓN RACIONAL",
+        content:
+          `El integrando <code>${_esc(f)}</code> es una fracción racional.<br>` +
+          `Procedimiento: factorizar denominador → plantear fracciones parciales → resolver constantes → integrar.`,
+        type: "step-factor",
+        value: null,
+      });
+
+      // Intentar factorizar el denominador
+      let factoredDenom = null;
+      try {
+        const denomMatch = f.match(/\/\s*(.+)$/);
+        if (denomMatch) {
+          const rawDenom = denomMatch[1]
+            .replace(/^\(/, "")
+            .replace(/\)$/, "")
+            .trim();
+          const facRaw = nerdamer(`factor(${rawDenom})`).toString();
+          factoredDenom = this._cleanNerdResult(facRaw);
+          stps.push({
+            label: "PASO 2 · FACTORIZAR EL DENOMINADOR",
+            content: `<span class="partial-frac-box">Denominador = ${_esc(factoredDenom)}</span>`,
+            type: "step-factor",
+            value: null,
+          });
+        }
+      } catch (_) {}
+
+      // Descomponer en fracciones parciales
+      let decomposed = null;
+      try {
+        const pfRaw = nerdamer(`partfrac(${f}, ${v})`).toString();
+        decomposed = this._cleanNerdResult(pfRaw);
+        stps.push({
+          label: "PASO 3 · DESCOMPOSICIÓN EN FRACCIONES PARCIALES",
+          content:
+            `<span class="partial-frac-box">${_esc(f)} = ${_esc(decomposed)}</span><br>` +
+            `(Se plantea A/factor₁ + B/factor₂ y se resuelve el sistema de ecuaciones)`,
+          type: "step-nerd",
+          value: null,
+        });
+      } catch (_) {
+        stps.push({
+          label: "NOTA",
+          content:
+            "Descomposición automática no disponible. Integrando directamente con Nerdamer.",
+          type: "step-info",
+          value: null,
+        });
+      }
+
+      const toIntegrate = decomposed || f;
+
+      // Mostrar las integrales separadas si hubo descomposición
+      if (decomposed) {
+        stps.push({
+          label: "PASO 4 · SEPARAR E INTEGRAR TÉRMINO A TÉRMINO",
+          content:
+            `<span class="integral-sym">∫</span> <code>${_esc(decomposed)}</code> d${_esc(v)}<br>` +
+            `= Suma de integrales de cada fracción simple`,
+          type: "step-info",
+          value: null,
+        });
+      }
+
+      // Integrar
+      const raw = nerdamer(`integrate(${toIntegrate}, ${v})`).toString();
+      const result = this._cleanNerdResult(raw);
+
+      stps.push({
+        label: `PASO ${decomposed ? "5" : "4"} · RESULTADO DE LA INTEGRACIÓN`,
+        content:
+          `<span class="integral-sym">∫</span> <code>${_esc(toIntegrate)}</code> d${_esc(v)}<br>` +
+          `= <span class="result-box">${_esc(result)} + C</span>`,
+        type: "step-result",
+        value: result + " + C",
+      });
+
+      // Simplificación logarítmica
+      if (result.includes("log")) {
+        try {
+          const simpRaw = nerdamer(`simplify(${result})`).toString();
+          const simpClean = this._cleanNerdResult(simpRaw);
+          if (simpClean && simpClean !== result) {
+            stps.push({
+              label: `PASO ${decomposed ? "6" : "5"} · SIMPLIFICACIÓN`,
+              content: `<span class="result-box">${_esc(simpClean)} + C</span>`,
+              type: "step-result",
+              value: simpClean + " + C",
+            });
+            return simpClean + " + C";
+          }
+        } catch (_) {}
+      }
+      return result + " + C";
+    },
+
+    /* ── Fracción simple A/(ax+b) ───────────────────────────── */
+    _integrateSingleLinearFrac(f, v, stps) {
+      const lf = this._extractLinearFrac(f.trim(), v);
+      if (lf) {
+        const { A, a, b, uExpr, k } = lf;
+        stps.push({
+          label: "SUSTITUCIÓN u = " + uExpr,
+          content:
+            `<span class="substitution-box">` +
+            `Sea <strong>u = ${_esc(uExpr)}</strong><br>` +
+            `du = ${a} · d${_esc(v)} &nbsp;→&nbsp; d${_esc(v)} = du/${a}<br><br>` +
+            `∫ ${_esc(String(A))}/(${_esc(uExpr)}) d${_esc(v)}` +
+            ` = (${A}/${a}) · ∫ (1/u) du = ${k} · ln|u|` +
+            `</span>`,
+          type: "step-nerd",
+          value: null,
+        });
+        const result = `${k} ln|${uExpr}|`;
+        stps.push({
+          label: "RESULTADO",
+          content: `<span class="result-box">${_esc(result)} + C</span>`,
+          type: "step-result",
+          value: result + " + C",
+        });
+        return result + " + C";
+      }
+      return this._integrateDirect(f, v, stps);
+    },
+
+    /* ── Por partes ─────────────────────────────────────────── */
+    _integrateByParts(f, v, stps) {
+      stps.push({
+        label: "REGLA DE INTEGRACIÓN POR PARTES",
+        content:
+          "∫ u dv = u·v − ∫ v du<br>Orden LIATE: Logarítmica > Inversa-trig > Algebraica > Trig > Exponencial.",
+        type: "step-info",
+        value: null,
+      });
+      const raw = nerdamer(`integrate(${f}, ${v})`).toString();
+      const result = this._cleanNerdResult(raw);
+      stps.push({
+        label: "RESULTADO",
+        content: `<span class="result-box">${_esc(result)} + C</span>`,
+        type: "step-result",
+        value: result + " + C",
+      });
+      return result + " + C";
+    },
+
+    /* ── Sustitución genérica ───────────────────────────────── */
+    _integrateSubstitution(f, v, substExpr, stps) {
+      stps.push({
+        label: "CAMBIO DE VARIABLE u = " + substExpr,
+        content:
+          `<span class="substitution-box">Sea <strong>u = ${_esc(substExpr)}</strong><br>` +
+          `du/d${_esc(v)} = d/d${_esc(v)}(${_esc(substExpr)})</span>`,
+        type: "step-info",
+        value: null,
+      });
+      const raw = nerdamer(`integrate(${f}, ${v})`).toString();
+      const result = this._cleanNerdResult(raw);
+      stps.push({
+        label: "RESULTADO",
+        content: `<span class="result-box">${_esc(result)} + C</span>`,
+        type: "step-result",
+        value: result + " + C",
+      });
+      return result + " + C";
+    },
+
+    /* ── Directa ────────────────────────────────────────────── */
+    _integrateDirect(f, v, stps) {
+      stps.push({
+        label: "REGLAS BÁSICAS DE INTEGRACIÓN",
+        content:
+          "∫ xⁿ dx = xⁿ⁺¹/(n+1) + C<br>∫ 1/x dx = ln|x| + C<br>" +
+          "∫ eˣ dx = eˣ + C<br>∫ sin x dx = −cos x + C<br>∫ cos x dx = sin x + C",
+        type: "step-info",
+        value: null,
+      });
+      const raw = nerdamer(`integrate(${f}, ${v})`).toString();
+      const result = this._cleanNerdResult(raw);
+      stps.push({
+        label: "RESULTADO",
+        content: `<span class="result-box">${_esc(result)} + C</span>`,
+        type: "step-result",
+        value: result + " + C",
+      });
+      return result + " + C";
     },
 
     /* ── INTEGRAL DEFINIDA ──────────────────────────── */
@@ -1005,155 +1710,6 @@ window.QC = (() => {
         });
         this._commitSteps(stps, null, "integral");
       }
-    },
-
-    /* ── DETECCIÓN DEL MÉTODO DE INTEGRACIÓN ─────── */
-    _detectIntegrationMethod(f, variable) {
-      const expr = f.toLowerCase().replace(/\s/g, "");
-
-      // ¿Fracción racional? numerador sin x, denominador polinomial grado ≥ 2
-      if (this._isRationalFraction(f, variable)) {
-        return {
-          type: "partial_fractions",
-          name: "FRACCIONES PARCIALES",
-          description:
-            "El integrando es una fracción racional. Se descompondrá en fracciones parciales.",
-          steps: [],
-        };
-      }
-
-      // ¿Contiene ln, log, arctan, arcsin → por partes?
-      if (/\bln\b|\blog\b|arctan|arcsin|arccos/.test(expr) && /\*/.test(expr)) {
-        return {
-          type: "by_parts",
-          name: "INTEGRACIÓN POR PARTES",
-          description: "∫u·dv = u·v − ∫v·du. Identificar u y dv.",
-          steps: [
-            {
-              label: "REGLA DE INTEGRACIÓN",
-              content:
-                "∫ u dv = u·v − ∫ v du<br>Elegir u de forma que simplifique al derivar.",
-              type: "step-info",
-              value: null,
-            },
-          ],
-        };
-      }
-
-      // Sustitución lineal: función de (ax+b)
-      const substMatch = f.match(/\(([0-9a-z/*+\-]+)[xX]([+\-][^)]+)?\)/);
-      if (substMatch) {
-        const u = substMatch[0].slice(1, -1);
-        const substDetails = `<span class="substitution-box">Sea u = <code>${_esc(u)}</code><br>du = d(${_esc(u)})/${_esc(variable)} · d${_esc(variable)}</span>`;
-        return {
-          type: "substitution",
-          name: "SUSTITUCIÓN LINEAL",
-          description: `Se aplica sustitución u = ${u}`,
-          substDetails,
-          steps: [
-            {
-              label: "CAMBIO DE VARIABLE",
-              content: substDetails,
-              type: "step-info",
-              value: null,
-            },
-          ],
-        };
-      }
-
-      // Directa
-      return {
-        type: "direct",
-        name: "INTEGRACIÓN DIRECTA",
-        description:
-          "Aplicar reglas básicas de integración (potencias, funciones elementales).",
-        steps: [
-          {
-            label: "REGLAS APLICADAS",
-            content:
-              "∫xⁿ dx = xⁿ⁺¹/(n+1) + C<br>∫sin(x) dx = −cos(x) + C<br>∫cos(x) dx = sin(x) + C<br>∫1/x dx = ln|x| + C<br>∫eˣ dx = eˣ + C",
-            type: "step-info",
-            value: null,
-          },
-        ],
-      };
-    },
-
-    /** Detecta si f es una fracción racional en 'variable' */
-    _isRationalFraction(f, variable) {
-      if (!f.includes("/")) return false;
-      const parts = f.split("/");
-      if (parts.length < 2) return false;
-      const denominator = parts.slice(1).join("/");
-      // Si el denominador tiene x² o productos de lineales
-      return (
-        /[xX]\^2|\([^)]+[xX][^)]*\)\s*\*\s*\(/.test(denominator) ||
-        /[xX]\s*\*\s*[xX]/.test(denominator) ||
-        /[0-9][xX]\^2/.test(denominator)
-      );
-    },
-
-    /* ── INTEGRACIÓN CON FRACCIONES PARCIALES ─────── */
-    _integrateWithPartialFractions(f, variable, stps) {
-      stps.push({
-        label: "PASO 1 · FRACCIONES PARCIALES",
-        content: "Descomponiendo la fracción racional en términos más simples.",
-        type: "step-factor",
-        value: null,
-      });
-
-      let decomposed = null;
-      try {
-        // Usar nerdamer para la descomposición
-        decomposed = nerdamer(`partfrac(${f}, ${variable})`).toString();
-        decomposed = this._cleanNerdResult(decomposed);
-        stps.push({
-          label: "DESCOMPOSICIÓN EN FRACCIONES PARCIALES",
-          content: `<span class="partial-frac-box">${_esc(f)} = ${_esc(decomposed)}</span>`,
-          type: "step-nerd",
-          value: null,
-        });
-      } catch (_) {
-        // Fallback: intentar factorizar el denominador manualmente
-        stps.push({
-          label: "NOTA",
-          content:
-            "Procediendo con integración directa (descomposición manual no disponible).",
-          type: "step-info",
-          value: null,
-        });
-      }
-
-      // Integrar la expresión descompuesta (o la original)
-      const toIntegrate = decomposed || f;
-      const raw = nerdamer(`integrate(${toIntegrate}, ${variable})`).toString();
-      const result = this._cleanNerdResult(raw);
-
-      stps.push({
-        label: "PASO 2 · INTEGRACIÓN TÉRMINO A TÉRMINO",
-        content: `<span class="integral-sym">∫</span> [${_esc(toIntegrate)}] d${_esc(variable)}<br>= <span class="result-box">${_esc(result)}</span> + C`,
-        type: "step-result",
-        value: result + " + C",
-      });
-
-      // Intentar simplificar logaritmos: ln|a| + ln|b| → ln|a·b|
-      if (result.includes("log") || result.includes("ln")) {
-        try {
-          const simplified = nerdamer(`simplify(${result})`).toString();
-          const simpClean = this._cleanNerdResult(simplified);
-          if (simpClean !== result) {
-            stps.push({
-              label: "PASO 3 · SIMPLIFICACIÓN",
-              content: `Usando propiedades de logaritmos:<br><span class="result-box">${_esc(simpClean)} + C</span>`,
-              type: "step-result",
-              value: simpClean + " + C",
-            });
-            return simpClean + " + C";
-          }
-        } catch (_) {}
-      }
-
-      return result + " + C";
     },
 
     /* ── DERIVADA ───────────────────────────────────── */
@@ -2399,8 +2955,9 @@ window.QC = (() => {
             },
           });
           await worker.setParameters({
+            // Whitelist ampliado: incluye símbolos matemáticos, corchetes, barras
             tessedit_char_whitelist:
-              "0123456789+-*/()^.=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ πΩ√∑∫",
+              "0123456789+-*/()[]{}^.,=<>|abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ πΩ√∑∫∂∞≤≥→²³⁴",
           });
           const {
             data: { text },
@@ -2416,7 +2973,30 @@ window.QC = (() => {
           statusEl.textContent = "✓ Completado";
 
           // Intentar convertir a expresión compatible con Nerdamer/Math.js
-          const cleaned = _cleanOCR(text) || this._ocrToMathExpr(text);
+          // La función _cleanOCR usa el pipeline completo de detección matemática
+          const rawText = text;
+          const cleaned = _cleanOCR(rawText) || this._ocrToMathExpr(rawText);
+
+          // Mostrar tipo detectado en el indicador
+          const detectedEl = D("ocr-detected-type");
+          if (detectedEl && cleaned) {
+            const typeStr = cleaned.startsWith("integrate(")
+              ? "∫ INTEGRAL DETECTADA"
+              : cleaned.startsWith("diff(")
+                ? "d/dx DERIVADA DETECTADA"
+                : cleaned.startsWith("limit(")
+                  ? "lim LÍMITE DETECTADO"
+                  : "EXPRESIÓN DETECTADA";
+            detectedEl.textContent = typeStr;
+            if (gsap)
+              gsap.fromTo(
+                detectedEl,
+                { opacity: 0, y: 4 },
+                { opacity: 1, y: 0, duration: 0.3 },
+              );
+          } else if (detectedEl) {
+            detectedEl.textContent = "";
+          }
           if (cleaned) {
             if (gsap) {
               gsap
@@ -2481,30 +3061,33 @@ window.QC = (() => {
         }
       });
     },
-    /** Intenta convertir texto OCR de notación matemática estándar */
+    /**
+     * Pipeline OCR → expresión matemática evaluable.
+     * Prioridad: integrales → derivadas → límites → expresión general.
+     */
     _ocrToMathExpr(text) {
-      let s = (text || "").replace(/\n/g, " ").trim();
-      // Detectar integral: ∫ ... dx
-      const intMatch = s.match(/∫\s*(.+?)\s*d([a-z])/i);
-      if (intMatch)
-        return `integrate(${_cleanOCRRaw(intMatch[1])}, ${intMatch[2]})`;
-      // Detectar límite: lim ... →
-      const limMatch = s.match(/lim\s*[a-z]\s*→\s*([^\s]+)\s*(.+)/i);
-      if (limMatch)
-        return `limit(${_cleanOCRRaw(limMatch[2])}, x, ${limMatch[1]})`;
-      return _cleanOCRRaw(s);
+      if (!text) return null;
+      const norm = text.replace(/\r?\n/g, " ").replace(/\s+/g, " ").trim();
+
+      // Pasar por todos los detectores en orden de especificidad
+      return (
+        _ocrDetectIntegral(norm) ||
+        _ocrDetectDerivative(norm) ||
+        _ocrDetectLimit(norm) ||
+        _ocrNormalize(norm)
+          .replace(/\s/g, "")
+          .replace(/[^0-9a-zA-Z+\-*/()^.,=[\]πe∫]/g, "") ||
+        null
+      );
     },
   };
 
+  /**
+   * Limpieza matemática básica de cadena OCR.
+   * Usada internamente y como función de utilidad compartida.
+   */
   function _cleanOCRRaw(s) {
-    return (s || "")
-      .replace(/[×xX✕]/g, "*")
-      .replace(/÷/g, "/")
-      .replace(/[−–—]/g, "-")
-      .replace(/²/g, "^2")
-      .replace(/³/g, "^3")
-      .replace(/\s+/g, "")
-      .trim();
+    return _ocrNormalize(s || "").replace(/\s/g, "");
   }
 
   /* ════════════════════════════════════════════════════

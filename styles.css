@@ -2736,3 +2736,179 @@ body::after {
     padding: 18px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   MEJORAS v3.1 — Pasos detallados de integrales + OCR mejorado
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Cajas de pasos de integración */
+.step-card.step-integral::before {
+  background: #38bdf8;
+  box-shadow: 0 0 14px rgba(56, 189, 248, .55);
+}
+
+.step-card.step-nerd::before {
+  background: var(--accent-purple);
+  box-shadow: 0 0 12px rgba(168, 85, 247, .5);
+}
+
+.step-card.step-factor::before {
+  background: var(--accent-orange);
+  box-shadow: 0 0 12px rgba(255, 107, 43, .45);
+}
+
+.step-card.step-info::before {
+  background: var(--accent-yellow);
+  box-shadow: 0 0 10px rgba(255, 215, 0, .4);
+}
+
+.step-card.step-limit::before {
+  background: #e879f9;
+  box-shadow: 0 0 12px rgba(232, 121, 249, .45);
+}
+
+/* Símbolo de integral grande */
+.integral-sym {
+  font-size: 1.15em;
+  color: #38bdf8;
+  font-family: Georgia, serif;
+  vertical-align: middle;
+}
+
+/* Caja de sustitución (cambio de variable) */
+.substitution-box {
+  display: block;
+  background: rgba(255, 215, 0, .07);
+  border: 1px solid rgba(255, 215, 0, .22);
+  border-left: 3px solid var(--accent-yellow);
+  border-radius: 5px;
+  padding: 8px 12px;
+  margin: 6px 0;
+  color: var(--accent-yellow);
+  font-family: var(--font-mono);
+  font-size: .78rem;
+  line-height: 1.6;
+}
+
+.substitution-box strong {
+  color: #fde68a;
+  font-weight: 700;
+}
+
+/* Caja de fracciones parciales */
+.partial-frac-box {
+  display: block;
+  background: rgba(168, 85, 247, .07);
+  border: 1px solid rgba(168, 85, 247, .22);
+  border-left: 3px solid var(--accent-purple);
+  border-radius: 5px;
+  padding: 8px 12px;
+  margin: 6px 0;
+  color: var(--accent-purple);
+  font-family: var(--font-mono);
+  font-size: .78rem;
+  line-height: 1.6;
+}
+
+/* Caja de resultado final */
+.result-box {
+  display: inline-block;
+  background: rgba(0, 255, 136, .08);
+  border: 1px solid rgba(0, 255, 136, .25);
+  border-radius: 4px;
+  padding: 2px 9px;
+  color: var(--accent-green);
+  font-weight: 700;
+  font-family: var(--font-mono);
+  margin-top: 3px;
+}
+
+/* Código inline en pasos */
+.step-content code {
+  background: rgba(0, 212, 255, .09);
+  border: 1px solid rgba(0, 212, 255, .2);
+  border-radius: 3px;
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+  color: var(--accent-cyan);
+  font-size: .88em;
+}
+
+/* Colores semánticos en pasos */
+.step-content .highlight {
+  color: var(--accent-cyan);
+}
+
+.step-content .math-val {
+  color: var(--accent-green);
+  font-weight: 700;
+}
+
+.step-content .op-symbol {
+  color: var(--accent-orange);
+}
+
+.step-content .arrow-right {
+  color: var(--accent-orange);
+  margin: 0 4px;
+}
+
+/* Engine badge */
+.engine-badge {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: .44rem;
+  padding: 1px 6px;
+  border-radius: 6px;
+  letter-spacing: .04em;
+  vertical-align: middle;
+  margin-left: 5px;
+}
+
+.engine-nerdamer {
+  background: rgba(168, 85, 247, .14);
+  border: 1px solid rgba(168, 85, 247, .3);
+  color: var(--accent-purple);
+}
+
+.engine-mathjs {
+  background: rgba(0, 212, 255, .1);
+  border: 1px solid rgba(0, 212, 255, .25);
+  color: var(--accent-cyan);
+}
+
+/* OCR — indicador de tipo detectado */
+.ocr-detected-type {
+  font-family: var(--font-mono);
+  font-size: .6rem;
+  color: var(--accent-yellow);
+  letter-spacing: .07em;
+  margin-top: 4px;
+  min-height: 14px;
+  text-align: center;
+  animation: type-fade 0.3s ease;
+}
+
+@keyframes type-fade {
+  from {
+    opacity: 0;
+    transform: translateY(3px)
+  }
+
+  to {
+    opacity: 1;
+    transform: none
+  }
+}
+
+/* Highlight en pasos de sustitución */
+.step-content .subst-var {
+  color: var(--accent-yellow);
+  font-weight: 700;
+}
+
+.step-content .subst-result {
+  color: var(--accent-green);
+  font-weight: 700;
+  font-size: 1.02em;
+}

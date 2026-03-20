@@ -472,7 +472,7 @@
         </div>
       </div><!-- /keyboard-section -->
 
-      <!-- OCR mejorado -->
+      <!-- OCR mejorado — con detección de tipo de ecuación -->
       <section class="ocr-section" aria-label="OCR — Imagen a ecuación">
         <p class="ocr-title" aria-hidden="true">OCR — IMAGEN A ECUACIÓN</p>
         <div class="ocr-drop-zone" id="ocr-drop-zone" role="button" tabindex="0"
@@ -484,8 +484,9 @@
             <div class="ocr-ripple" aria-hidden="true"></div>
           </div>
           <p class="ocr-text">Arrastra o <span>haz clic para subir</span></p>
-          <p class="ocr-hint" aria-hidden="true">PNG · JPG · BMP · WEBP · TIFF</p>
+          <p class="ocr-hint" aria-hidden="true">∫ Integrales · d/dx Derivadas · lim Límites · Ecuaciones</p>
         </div>
+        <div class="ocr-detected-type" id="ocr-detected-type" aria-live="polite"></div>
         <input type="file" id="ocr-file-input" accept="image/png,image/jpeg,image/bmp,image/webp,image/tiff"
           onchange="QC.ocr.handleFile(event)" aria-hidden="true" tabindex="-1" />
         <div class="ocr-progress" id="ocr-progress" role="status" aria-live="polite" style="display:none">
