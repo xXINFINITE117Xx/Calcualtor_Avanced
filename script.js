@@ -976,20 +976,31 @@ window.QC = (() => {
       // ── PLANTEAMIENTO ───────────────────────────────────────
       stps.push({
         label: "PLANTEAMIENTO",
-        content:
-          `Calcular: <span class="integral-sym">∫</span> <code>${_esc(f)}</code> d${_esc(v)} ` +
-          `<span class="engine-badge engine-nerdamer">NERDAMER</span>`,
+        content: "",
         type: "step-integral",
         value: null,
+        opts: {
+          icon: "∫",
+          stepTitle: "Calcular la integral indefinida",
+          stepExplanation: `Encontrar F(${v}) tal que F'(${v}) = ${f}`,
+          stepExpr: `∫ ${f} d${v}`,
+          numbered: false,
+        },
       });
 
       // ── ANÁLISIS DEL INTEGRANDO ─────────────────────────────
       const analysis = this._analyzeIntegrand(f, v);
       stps.push({
-        label: "ANÁLISIS DEL INTEGRANDO",
-        content: `Forma detectada: <span class="highlight">${_esc(analysis.typeName)}</span><br>${_esc(analysis.description)}`,
+        label: "TIPO DE INTEGRAL",
+        content: "",
         type: "step-info",
         value: null,
+        opts: {
+          icon: "🔍",
+          stepTitle: analysis.typeName,
+          stepExplanation: analysis.description,
+          numbered: false,
+        },
       });
 
       // ── EJECUCIÓN DEL MÉTODO ────────────────────────────────
@@ -1015,12 +1026,18 @@ window.QC = (() => {
             nerdamer(`diff(${noC}, ${v})`).toString(),
           );
           stps.push({
-            label: "VERIFICACIÓN  ✓",
-            content:
-              `d/d${_esc(v)} [${_esc(noC)}] = <code>${_esc(ver)}</code>` +
-              ` <span style="color:var(--accent-green);font-size:.78em">← coincide con el integrando</span>`,
+            label: "VERIFICACIÓN",
+            content: "",
             type: "step-info",
             value: null,
+            opts: {
+              icon: "✓",
+              stepTitle: "Verificar derivando el resultado",
+              stepExplanation: "Si d/dx[F(x)] = f(x), la integral es correcta",
+              stepExpr: `d/d${v} [${noC}] = ${ver}`,
+              stepResult: `<span style="color:var(--accent-green);font-size:.82em">← coincide con el integrando ✓</span>`,
+              numbered: false,
+            },
           });
         } catch (_) {}
       }
@@ -1188,23 +1205,25 @@ window.QC = (() => {
        Ejemplo: ∫ [6/(2x+1) - 3/(x+1)] dx
        ══════════════════════════════════════════════════════════ */
     _integrateSumOfFractions(f, v, stps) {
-      // Quitar corchetes externos si existen
       const inner = f.replace(/^\s*[\[({]\s*/, "").replace(/\s*[\])}]\s*$/, "");
       const terms = this._splitTopLevel(inner);
 
-      // ── PASO: Separar por linealidad ─────────────────────
-      const integralTerms = terms.map((t) => {
-        const abs = t.replace(/^[+\-]\s*/, "");
-        const sign = t.trim().startsWith("-") ? "−" : "+";
-        return `<span class="integral-sym">∫</span> <code>${sign === "−" ? "−" : ""}(${_esc(abs)})</code> d${_esc(v)}`;
-      });
       stps.push({
-        label: `PASO 1 · LINEALIDAD DE LA INTEGRAL`,
-        content:
-          `<span class="integral-sym">∫</span> <code>[${_esc(inner)}]</code> d${_esc(v)} =<br>` +
-          integralTerms.join(" <span class='op-symbol'>+</span> "),
-        type: "step-info",
+        label: "LINEALIDAD DE LA INTEGRAL",
+        content: "",
+        type: "step-nerd",
         value: null,
+        opts: {
+          icon: "⊕",
+          stepTitle: "Separar la integral",
+          stepExplanation: "Por linealidad: ∫[f±g]dx = ∫f dx ± ∫g dx",
+          stepExpr: terms
+            .map(
+              (t, i) =>
+                `${i > 0 && !t.trim().startsWith("-") ? "+ " : ""}∫(${t.trim().replace(/^[+-]\s*/, "")}) d${v}`,
+            )
+            .join("  "),
+        },
       });
 
       const partialResults = [];
@@ -1213,56 +1232,46 @@ window.QC = (() => {
         const sign = term.trim().startsWith("-") ? -1 : 1;
         const signStr = sign < 0 ? "−" : idx === 0 ? "" : "+";
         const termAbs = term.trim().replace(/^[+\-]\s*/, "");
-
-        // ── Intentar extraer A/(ax+b) ────────────────────
         const lf = this._extractLinearFrac(termAbs, v);
-
-        stps.push({
-          label: `PASO ${idx + 2} · INTEGRAL ${idx + 1}: ∫ ${signStr}(${termAbs}) d${v}`,
-          content: `Calcular: <span class="integral-sym">∫</span> <code>${sign < 0 ? "−" : ""}(${_esc(termAbs)})</code> d${_esc(v)}`,
-          type: "step-nerd",
-          value: null,
-        });
 
         if (lf) {
           const { A, a, b, uExpr, k } = lf;
-          // Detallar la sustitución
-          const duExpr = a === 1 ? `d${v}` : `du/${Math.abs(a)}`;
           stps.push({
-            label: `   ↳ SUSTITUCIÓN u = ${uExpr}`,
-            content:
-              `<span class="substitution-box">` +
-              `Sea <strong>u = ${_esc(uExpr)}</strong><br>` +
-              `du = ${Math.abs(a)} · d${_esc(v)} &nbsp;→&nbsp; d${_esc(v)} = ${duExpr}<br><br>` +
-              `∫ <code>${_esc(String(A))} / (${_esc(uExpr)})</code> d${_esc(v)}` +
-              ` = ${_esc(String(A))} · (1/${Math.abs(a)}) · ∫ (1/u) du` +
-              ` = <span class="math-val">${_esc(String(k))} · ln|u|</span>` +
-              `</span>`,
+            label: `INTEGRAL ${idx + 1} — SUSTITUCIÓN`,
+            content: "",
             type: "step-nerd",
             value: null,
-          });
-          const readableResult = `${sign * k} ln|${uExpr}|`;
-          stps.push({
-            label: `   ↳ RESULTADO (sustituyendo u = ${uExpr})`,
-            content: `<span class="result-box">${sign < 0 ? "−" : ""}${Math.abs(sign * k)} ln|${_esc(uExpr)}|</span>`,
-            type: "step-nerd",
-            value: null,
+            opts: {
+              icon: "u",
+              stepTitle: `Sustitución u = ${uExpr}`,
+              stepExplanation:
+                `Sea u = ${uExpr}  →  du = ${Math.abs(a)} d${v}  →  d${v} = du/${Math.abs(a)}\n` +
+                `∫ ${A}/(${uExpr}) d${v} = (${A}/${Math.abs(a)}) · ∫ 1/u du = ${k} · ln|u|`,
+              stepExpr: `∫ ${A}/(${uExpr}) d${v} = ${k} ln|${uExpr}|`,
+              stepResult: `<span class="result-box">${signStr}${Math.abs(sign * k)} ln|${uExpr}|</span>`,
+            },
           });
           partialResults.push({
-            readable: readableResult,
+            readable: `${sign * k} ln|${uExpr}|`,
             nerd: `${sign * k}*log(abs(${uExpr}))`,
             sign,
           });
         } else {
-          // Fallback: Nerdamer
           try {
             const raw = nerdamer(`integrate(${termAbs}, ${v})`).toString();
             const clean = this._cleanNerdResult(raw);
             stps.push({
-              label: `   ↳ RESULTADO`,
-              content: `<span class="result-box">${sign < 0 ? "−" : ""}${_esc(clean)}</span>`,
+              label: `INTEGRAL ${idx + 1}`,
+              content: "",
               type: "step-nerd",
               value: null,
+              opts: {
+                icon: "∫",
+                stepTitle: `Integrar término ${idx + 1}`,
+                stepExplanation: "Aplicar reglas básicas",
+                stepExpr: `∫ (${termAbs}) d${v} = ${clean}`,
+                stepResult: `<span class="result-box">${signStr}${clean}</span>`,
+              },
             });
             partialResults.push({
               readable: `${sign < 0 ? "−" : ""}${clean}`,
@@ -1281,84 +1290,75 @@ window.QC = (() => {
         }
       });
 
-      // ── COMBINAR RESULTADOS ──────────────────────────────
       const combined = partialResults
         .map((p, i) =>
           i === 0
             ? p.readable
             : p.readable.startsWith("−")
-              ? p.readable
-              : `+ ${p.readable}`,
+              ? " " + p.readable
+              : " + " + p.readable,
         )
-        .join(" ")
-        .replace(/\+ −/g, "− ")
-        .replace(/\s+/g, " ")
+        .join("")
+        .replace(/\+\s*−/g, "− ")
         .trim();
 
       stps.push({
-        label: `PASO ${terms.length + 2} · COMBINAR RESULTADOS`,
-        content: `<span class="result-box">${_esc(combined)} + C</span>`,
+        label: "RESULTADO COMBINADO",
+        content: "",
         type: "step-result",
         value: combined + " + C",
+        opts: {
+          icon: "=",
+          stepTitle: "Combinar todos los resultados",
+          stepExplanation:
+            "Suma algebraica de las integrales parciales más la constante C",
+          stepExpr: `∫ [${inner}] d${v} = ${combined} + C`,
+          stepResult: `<span class="result-box">${combined} + C</span>`,
+        },
       });
 
-      // ── SIMPLIFICACIÓN LOGARÍTMICA ───────────────────────
-      // Si hay múltiples logaritmos, intentar condensar: a·ln|A| − b·ln|B| = ln|Aᵃ/Bᵇ|
       const logTerms = partialResults.filter(
         (p) => p.readable.includes("ln") || p.readable.includes("log"),
       );
-
       if (logTerms.length >= 2) {
         const simplified = this._simplifyLogsReadable(partialResults);
         if (simplified && simplified !== combined) {
           stps.push({
-            label: `PASO ${terms.length + 3} · SIMPLIFICACIÓN LOGARÍTMICA`,
-            content:
-              `Usando: <code>a·ln|A| − b·ln|B| = ln|Aᵃ/Bᵇ|</code><br>` +
-              `<span class="result-box">${_esc(simplified)} + C</span>`,
+            label: "SIMPLIFICACIÓN LOGARÍTMICA",
+            content: "",
             type: "step-result",
             value: simplified + " + C",
+            opts: {
+              icon: "🔁",
+              stepTitle: "Simplificar logaritmos",
+              stepExplanation: "a·ln|A| − b·ln|B| = ln|A^a / B^b|",
+              stepExpr: simplified + " + C",
+              stepResult: `<span class="result-box">${simplified} + C</span>`,
+            },
           });
-          // También intentar con Nerdamer
-          try {
-            const nerdExpr = partialResults.map((p) => p.nerd).join("+");
-            const nerdSimp = this._cleanNerdResult(
-              nerdamer(`simplify(${nerdExpr})`).toString(),
-            );
-            if (
-              nerdSimp &&
-              nerdSimp !== simplified &&
-              nerdSimp.includes("log")
-            ) {
-              stps.push({
-                label: `FORMA ALTERNATIVA`,
-                content: `<span class="result-box">${_esc(nerdSimp)} + C</span>`,
-                type: "step-result",
-                value: nerdSimp + " + C",
-              });
-            }
-          } catch (_) {}
           return simplified + " + C";
         }
-
-        // Intentar con Nerdamer directamente
         try {
           const nerdExpr = partialResults.map((p) => p.nerd).join("+");
-          const nerdSimp = this._cleanNerdResult(
+          const ns = this._cleanNerdResult(
             nerdamer(`simplify(${nerdExpr})`).toString(),
           );
-          if (nerdSimp && nerdSimp !== combined) {
+          if (ns && ns !== combined) {
             stps.push({
-              label: `PASO ${terms.length + 3} · SIMPLIFICACIÓN (Nerdamer)`,
-              content: `<span class="result-box">${_esc(nerdSimp)} + C</span>`,
+              label: "FORMA COMPACTA",
+              content: "",
               type: "step-result",
-              value: nerdSimp + " + C",
+              value: ns + " + C",
+              opts: {
+                icon: "✓",
+                stepTitle: "Forma compacta",
+                stepResult: `<span class="result-box">${ns} + C</span>`,
+              },
             });
-            return nerdSimp + " + C";
+            return ns + " + C";
           }
         } catch (_) {}
       }
-
       return combined + " + C";
     },
 
@@ -1426,15 +1426,20 @@ window.QC = (() => {
        ══════════════════════════════════════════════════════════ */
     _integratePartialFractionsDetailed(f, v, stps) {
       stps.push({
-        label: "PASO 1 · IDENTIFICAR LA FRACCIÓN RACIONAL",
-        content:
-          `El integrando <code>${_esc(f)}</code> es una fracción racional.<br>` +
-          `Procedimiento: factorizar denominador → plantear fracciones parciales → resolver constantes → integrar.`,
+        label: "IDENTIFICAR FRACCIÓN RACIONAL",
+        content: "",
         type: "step-factor",
         value: null,
+        opts: {
+          icon: "÷",
+          stepTitle: "Identificar la fracción racional",
+          stepExplanation:
+            "Procedimiento: factorizar denominador → fracciones parciales → resolver → integrar",
+          stepExpr: `∫ ${f} d${v}`,
+          numbered: false,
+        },
       });
 
-      // Intentar factorizar el denominador
       let factoredDenom = null;
       try {
         const denomMatch = f.match(/\/\s*(.+)$/);
@@ -1446,77 +1451,103 @@ window.QC = (() => {
           const facRaw = nerdamer(`factor(${rawDenom})`).toString();
           factoredDenom = this._cleanNerdResult(facRaw);
           stps.push({
-            label: "PASO 2 · FACTORIZAR EL DENOMINADOR",
-            content: `<span class="partial-frac-box">Denominador = ${_esc(factoredDenom)}</span>`,
+            label: "FACTORIZAR DENOMINADOR",
+            content: "",
             type: "step-factor",
             value: null,
+            opts: {
+              icon: "×",
+              stepTitle: "Factorizar el denominador",
+              stepExplanation:
+                "Encontrar los factores lineales del denominador",
+              stepExpr: `Denominador = ${factoredDenom}`,
+            },
           });
         }
       } catch (_) {}
 
-      // Descomponer en fracciones parciales
       let decomposed = null;
       try {
         const pfRaw = nerdamer(`partfrac(${f}, ${v})`).toString();
         decomposed = this._cleanNerdResult(pfRaw);
         stps.push({
-          label: "PASO 3 · DESCOMPOSICIÓN EN FRACCIONES PARCIALES",
-          content:
-            `<span class="partial-frac-box">${_esc(f)} = ${_esc(decomposed)}</span><br>` +
-            `(Se plantea A/factor₁ + B/factor₂ y se resuelve el sistema de ecuaciones)`,
+          label: "FRACCIONES PARCIALES",
+          content: "",
           type: "step-nerd",
           value: null,
+          opts: {
+            icon: "=",
+            stepTitle: "Descomposición en fracciones parciales",
+            stepExplanation:
+              "Plantear A/factor₁ + B/factor₂ y resolver el sistema lineal para A, B",
+            stepExpr: `${f} = ${decomposed}`,
+            stepResult: `<span class="partial-frac-box">${_esc(decomposed)}</span>`,
+          },
         });
       } catch (_) {
         stps.push({
           label: "NOTA",
           content:
-            "Descomposición automática no disponible. Integrando directamente con Nerdamer.",
+            "Descomposición automática no disponible. Integrando directamente.",
           type: "step-info",
           value: null,
         });
       }
 
       const toIntegrate = decomposed || f;
-
-      // Mostrar las integrales separadas si hubo descomposición
       if (decomposed) {
         stps.push({
-          label: "PASO 4 · SEPARAR E INTEGRAR TÉRMINO A TÉRMINO",
-          content:
-            `<span class="integral-sym">∫</span> <code>${_esc(decomposed)}</code> d${_esc(v)}<br>` +
-            `= Suma de integrales de cada fracción simple`,
+          label: "INTEGRAR TÉRMINO A TÉRMINO",
+          content: "",
           type: "step-info",
           value: null,
+          opts: {
+            icon: "∫",
+            stepTitle: "Separar e integrar cada fracción",
+            stepExplanation:
+              "Cada término A/(ax+b) se integra con sustitución u=ax+b",
+            stepExpr: `∫ [${decomposed}] d${v}`,
+            numbered: false,
+          },
         });
       }
 
-      // Integrar
       const raw = nerdamer(`integrate(${toIntegrate}, ${v})`).toString();
       const result = this._cleanNerdResult(raw);
 
       stps.push({
-        label: `PASO ${decomposed ? "5" : "4"} · RESULTADO DE LA INTEGRACIÓN`,
-        content:
-          `<span class="integral-sym">∫</span> <code>${_esc(toIntegrate)}</code> d${_esc(v)}<br>` +
-          `= <span class="result-box">${_esc(result)} + C</span>`,
+        label: "RESULTADO DE LA INTEGRACIÓN",
+        content: "",
         type: "step-result",
         value: result + " + C",
+        opts: {
+          icon: "=",
+          stepTitle: "Resultado de la integración",
+          stepExplanation:
+            "Suma de todos los términos integrados más la constante de integración C",
+          stepExpr: `∫ [${toIntegrate}] d${v} = ${result} + C`,
+          stepResult: `<span class="result-box">${_esc(result)} + C</span>`,
+        },
       });
 
-      // Simplificación logarítmica
       if (result.includes("log")) {
         try {
-          const simpRaw = nerdamer(`simplify(${result})`).toString();
-          const simpClean = this._cleanNerdResult(simpRaw);
-          if (simpClean && simpClean !== result) {
+          const sr = nerdamer(`simplify(${result})`).toString();
+          const sc = this._cleanNerdResult(sr);
+          if (sc && sc !== result) {
             stps.push({
-              label: `PASO ${decomposed ? "6" : "5"} · SIMPLIFICACIÓN`,
-              content: `<span class="result-box">${_esc(simpClean)} + C</span>`,
+              label: "SIMPLIFICACIÓN",
+              content: "",
               type: "step-result",
-              value: simpClean + " + C",
+              value: sc + " + C",
+              opts: {
+                icon: "🔁",
+                stepTitle: "Simplificar logaritmos",
+                stepExplanation: "Aplicar propiedades de logaritmos",
+                stepResult: `<span class="result-box">${_esc(sc)} + C</span>`,
+              },
             });
-            return simpClean + " + C";
+            return sc + " + C";
           }
         } catch (_) {}
       }
@@ -2417,62 +2448,173 @@ window.QC = (() => {
   };
 
   /* ════════════════════════════════════════════════════
-   MÓDULO: steps
+   MÓDULO: steps — Renderizador estilo Symbolab
+   Cada tarjeta tiene:  número · título · explicación · expresión · resultado
    ════════════════════════════════════════════════════ */
   const steps = {
-    _card(label, body, type = "") {
+    _stepIndex: 0, // contador global de pasos numerados
+
+    reset() {
+      this._stepIndex = 0;
+    },
+
+    /**
+     * Crea una tarjeta en el panel de pasos.
+     * @param {string} label    — título corto en mayúsculas
+     * @param {string} body     — HTML del contenido principal
+     * @param {string} type     — clase CSS extra (step-result, step-info, etc.)
+     * @param {Object} opts     — opciones extendidas para Symbolab-style
+     *   opts.stepTitle        — título del paso (ej: "Separar la integral")
+     *   opts.stepExplanation  — explicación en texto plano
+     *   opts.stepExpr         — expresión matemática actual
+     *   opts.stepResult       — resultado parcial en caja verde
+     *   opts.icon             — emoji/icono para la tarjeta
+     *   opts.numbered         — si es false, no muestra número
+     */
+    _card(label, body, type = "", opts = {}) {
       const box = D("steps-container");
       if (!box) return null;
+
+      // ── Numeración de pasos ──────────────────────────────
+      const isNumbered =
+        opts.numbered !== false &&
+        !type.includes("step-info") &&
+        !type.includes("step-error");
+      if (isNumbered) this._stepIndex++;
+      const num = isNumbered ? this._stepIndex : null;
+
+      // ── Construir HTML de la tarjeta Symbolab ────────────
+      const titleHTML = opts.stepTitle
+        ? `<div class="sc-step-title">
+             ${opts.icon ? `<span class="sc-step-icon">${opts.icon}</span>` : ""}
+             <span>${_esc(opts.stepTitle)}</span>
+           </div>`
+        : "";
+
+      const explanationHTML = opts.stepExplanation
+        ? `<div class="sc-step-explanation">${_esc(opts.stepExplanation)}</div>`
+        : "";
+
+      const exprHTML = opts.stepExpr
+        ? `<div class="sc-step-expr"><code>${opts.stepExpr}</code></div>`
+        : "";
+
+      const resultHTML = opts.stepResult
+        ? `<div class="sc-step-result-inline">${opts.stepResult}</div>`
+        : "";
+
+      // Cuerpo heredado (HTML libre, para retrocompatibilidad)
+      const legacyBody =
+        !opts.stepTitle && !opts.stepExplanation && !opts.stepExpr
+          ? `<div class="step-content">${body}</div>`
+          : "";
+
       const card = document.createElement("div");
-      card.className = `step-card ${type}`;
-      card.innerHTML = `<div class="step-number">${_esc(label)}</div><div class="step-content">${body}</div>`;
+      card.className = `step-card sc-card ${type}`;
+      card.innerHTML = `
+        <div class="sc-card-header">
+          ${num ? `<div class="sc-step-num">${num}</div>` : '<div class="sc-step-num sc-step-num--info">·</div>'}
+          <div class="sc-card-body">
+            <div class="step-number">${_esc(label)}</div>
+            ${titleHTML}
+            ${explanationHTML}
+            ${exprHTML}
+            ${resultHTML}
+            ${legacyBody}
+          </div>
+        </div>`;
       box.appendChild(card);
       return card;
     },
+
     animate(stps) {
       if (!stps?.length) return;
+      this.reset();
+
+      // Barra de progreso
+      const bar = D("steps-progress-fill");
+      if (bar) {
+        bar.style.width = "0%";
+        D("steps-progress-bar")?.classList.add("active");
+      }
+
       if (!gsap) {
-        stps.forEach((s) => this._card(s.label, s.content, s.type || ""));
+        stps.forEach((s) =>
+          this._card(s.label, s.content, s.type || "", s.opts || {}),
+        );
+        if (bar) bar.style.width = "100%";
         return;
       }
+
       const tl = gsap.timeline({ defaults: { ease: "power3.out" } });
+      const total = stps.length;
+
       stps.forEach((s, i) => {
-        const card = this._card(s.label, s.content, s.type || "");
+        const card = this._card(s.label, s.content, s.type || "", s.opts || {});
         if (!card) return;
+
+        // Animación de entrada con slide + fade
         tl.fromTo(
           card,
-          { opacity: 0, x: -26, scale: 0.97, filter: "blur(3px)" },
-          { opacity: 1, x: 0, scale: 1, filter: "blur(0)", duration: 0.36 },
-          i * 0.17,
+          { opacity: 0, x: -30, scale: 0.96, filter: "blur(4px)" },
+          { opacity: 1, x: 0, scale: 1, filter: "blur(0)", duration: 0.38 },
+          i * 0.19,
         );
+
+        // Actualizar barra de progreso
+        if (bar) {
+          tl.to(
+            bar,
+            {
+              width: `${((i + 1) / total) * 100}%`,
+              duration: 0.2,
+              ease: "none",
+            },
+            i * 0.19,
+          );
+        }
+
         tl.call(
           () => card.scrollIntoView({ behavior: "smooth", block: "nearest" }),
           [],
-          i * 0.17 + 0.1,
+          i * 0.19 + 0.1,
         );
       });
+
+      // Pulse final en la última card + desactivar barra
       tl.call(() => {
         const last = D("steps-container")?.lastElementChild;
-        if (last && last.id !== "steps-empty")
+        if (last && last.id !== "steps-empty") {
           gsap
             .timeline()
             .to(last, {
-              boxShadow: "0 0 24px rgba(0,255,136,.3)",
-              borderColor: "rgba(0,255,136,.5)",
+              boxShadow: "0 0 28px rgba(0,255,136,.35)",
+              borderColor: "rgba(0,255,136,.6)",
               duration: 0.35,
             })
             .to(last, {
               boxShadow: "none",
               borderColor: "var(--border-dim)",
-              duration: 0.55,
+              duration: 0.6,
               ease: "power2.inOut",
             });
+        }
+        if (bar)
+          setTimeout(
+            () => D("steps-progress-bar")?.classList.remove("active"),
+            400,
+          );
       });
     },
+
     clear(silent = false) {
+      this.reset();
       const box = D("steps-container");
       if (!box) return;
       const cards = [...box.children].filter((c) => c.id !== "steps-empty");
+      const pb = D("steps-progress-bar");
+      if (pb) pb.classList.remove("active");
+
       if (!cards.length) {
         if (!silent) D("steps-empty").style.display = "";
         return;
@@ -2480,8 +2622,8 @@ window.QC = (() => {
       if (gsap && !silent) {
         gsap.to(cards, {
           opacity: 0,
-          x: 14,
-          scale: 0.95,
+          x: 16,
+          scale: 0.94,
           duration: 0.2,
           stagger: 0.025,
           ease: "power2.in",
@@ -2501,6 +2643,7 @@ window.QC = (() => {
       }
       D("steps-count").textContent = "0 PASOS";
     },
+
     replay() {
       if (!S.allSteps.length) {
         ui.toast("No hay pasos que repetir", "info");
@@ -2864,9 +3007,12 @@ window.QC = (() => {
   }
 
   /* ════════════════════════════════════════════════════
-   MÓDULO: ocr
+   MÓDULO: ocr — Vista previa · Confirmación · Análisis
    ════════════════════════════════════════════════════ */
   const ocr = {
+    _pendingFile: null, // archivo en espera de análisis
+    _pendingExpr: null, // expresión detectada, pendiente de aceptar
+
     initDragDrop() {
       const zone = D("ocr-drop-zone");
       if (!zone) return;
@@ -2895,9 +3041,10 @@ window.QC = (() => {
           ui.toast("Imagen muy grande (máx 15 MB)", "error");
           return;
         }
-        this.process(f);
+        this._showPreview(f);
       });
     },
+
     handleFile(event) {
       const f = event.target.files?.[0];
       event.target.value = "";
@@ -2910,38 +3057,137 @@ window.QC = (() => {
         ui.toast("Imagen demasiado grande (máx 15 MB)", "error");
         return;
       }
-      this.process(f);
+      this._showPreview(f);
     },
-    async process(file) {
-      const zone = D("ocr-drop-zone"),
-        bar = D("ocr-bar"),
-        statusEl = D("ocr-status"),
-        prog = D("ocr-progress");
-      if (!zone || !bar || !statusEl || !prog) return;
-      zone.classList.add("processing");
-      prog.style.display = "block";
-      bar.style.width = "0%";
-      statusEl.textContent = "Cargando Tesseract…";
+
+    /** Muestra la miniatura y el botón "Analizar ecuación" */
+    _showPreview(file) {
+      this._pendingFile = file;
+      const zone = D("ocr-drop-zone");
+      const preview = D("ocr-preview-panel");
+      const thumb = D("ocr-thumb");
+      if (!zone || !preview || !thumb) return;
+
+      const url = URL.createObjectURL(file);
+      thumb.src = url;
+      thumb.onload = () => URL.revokeObjectURL(url);
+
+      // Ocultar zona de drop, mostrar preview
+      if (gsap) {
+        gsap.to(zone, {
+          opacity: 0,
+          scale: 0.95,
+          duration: 0.2,
+          ease: "power2.in",
+          onComplete: () => {
+            zone.style.display = "none";
+            preview.hidden = false;
+            gsap.fromTo(
+              preview,
+              { opacity: 0, y: 10 },
+              { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" },
+            );
+          },
+        });
+      } else {
+        zone.style.display = "none";
+        preview.hidden = false;
+      }
+
+      // Ocultar confirmación anterior si existía
+      const confirmPanel = D("ocr-confirm-panel");
+      if (confirmPanel) confirmPanel.hidden = true;
+      this._pendingExpr = null;
+    },
+
+    /** Lanza el análisis OCR con Tesseract sobre la imagen en espera */
+    async runAnalysis() {
+      if (!this._pendingFile) {
+        ui.toast("Primero sube una imagen", "warn");
+        return;
+      }
+      await this.process(this._pendingFile);
+    },
+
+    /** Vuelve al estado inicial (quita imagen, oculta paneles) */
+    reset() {
+      this._pendingFile = null;
+      this._pendingExpr = null;
+      const zone = D("ocr-drop-zone");
+      const preview = D("ocr-preview-panel");
+      const confirm = D("ocr-confirm-panel");
+      const prog = D("ocr-progress");
+      const det = D("ocr-detected-type");
+
+      if (preview) preview.hidden = true;
+      if (confirm) confirm.hidden = true;
+      if (prog) {
+        prog.style.display = "none";
+      }
+      if (det) det.textContent = "";
+
+      if (zone) {
+        zone.style.display = "";
+        if (gsap) {
+          gsap.fromTo(
+            zone,
+            { opacity: 0, scale: 0.95 },
+            { opacity: 1, scale: 1, duration: 0.3, ease: "power3.out" },
+          );
+        }
+      }
+    },
+
+    /** Acepta la expresión detectada y la calcula */
+    accept() {
+      const expr = this._pendingExpr;
+      if (!expr) return;
+
       if (gsap) {
         gsap
           .timeline()
-          .to(zone, { borderColor: "var(--accent-orange)", duration: 0.18 })
-          .to(".ocr-icon", {
-            rotation: 15,
-            scale: 1.2,
-            duration: 0.28,
-            ease: "power2.out",
+          .to(D("input-display"), { opacity: 0, y: -6, duration: 0.18 })
+          .call(() => {
+            calc.setExpr(expr);
+            calc.updatePreview();
           })
-          .to(".ocr-icon", {
-            rotation: 0,
-            scale: 1,
+          .to(D("input-display"), {
+            opacity: 1,
+            y: 0,
             duration: 0.28,
-            ease: "bounce.out",
+            ease: "power3.out",
           });
+      } else {
+        calc.setExpr(expr);
+        calc.updatePreview();
       }
+
+      ui.toast("Cargando ecuación desde imagen…", "success");
+      this.reset();
+      setTimeout(() => calc.calculate(), 600);
+    },
+
+    /** Motor OCR central — llamado desde runAnalysis() */
+    async process(file) {
+      const bar = D("ocr-bar");
+      const statusEl = D("ocr-status");
+      const prog = D("ocr-progress");
+      const btn = D("ocr-analyze-btn");
+      if (!bar || !statusEl || !prog) return;
+
+      // Deshabilitar botón durante análisis
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add("loading");
+      }
+      prog.style.display = "block";
+      bar.style.width = "0%";
+      statusEl.textContent = "Cargando Tesseract…";
+
       const loadAnim = gsap
         ? gsap.to(bar, { width: "60%", duration: 3.5, ease: "power1.inOut" })
         : null;
+
       ensureTesseract(async () => {
         try {
           const worker = await Tesseract.createWorker("eng", 1, {
@@ -2955,7 +3201,6 @@ window.QC = (() => {
             },
           });
           await worker.setParameters({
-            // Whitelist ampliado: incluye símbolos matemáticos, corchetes, barras
             tessedit_char_whitelist:
               "0123456789+-*/()[]{}^.,=<>|abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ πΩ√∑∫∂∞≤≥→²³⁴",
           });
@@ -2963,6 +3208,7 @@ window.QC = (() => {
             data: { text },
           } = await worker.recognize(file);
           await worker.terminate();
+
           loadAnim?.kill?.();
           bar.style.width = "100%";
           if (gsap)
@@ -2970,55 +3216,17 @@ window.QC = (() => {
               background: "linear-gradient(90deg,var(--accent-green),#00ffaa)",
               duration: 0.28,
             });
-          statusEl.textContent = "✓ Completado";
+          statusEl.textContent = "✓ Análisis completado";
 
-          // Intentar convertir a expresión compatible con Nerdamer/Math.js
-          // La función _cleanOCR usa el pipeline completo de detección matemática
-          const rawText = text;
-          const cleaned = _cleanOCR(rawText) || this._ocrToMathExpr(rawText);
+          // Pipeline de detección
+          const cleaned = _cleanOCR(text) || this._ocrToMathExpr(text);
 
-          // Mostrar tipo detectado en el indicador
-          const detectedEl = D("ocr-detected-type");
-          if (detectedEl && cleaned) {
-            const typeStr = cleaned.startsWith("integrate(")
-              ? "∫ INTEGRAL DETECTADA"
-              : cleaned.startsWith("diff(")
-                ? "d/dx DERIVADA DETECTADA"
-                : cleaned.startsWith("limit(")
-                  ? "lim LÍMITE DETECTADO"
-                  : "EXPRESIÓN DETECTADA";
-            detectedEl.textContent = typeStr;
-            if (gsap)
-              gsap.fromTo(
-                detectedEl,
-                { opacity: 0, y: 4 },
-                { opacity: 1, y: 0, duration: 0.3 },
-              );
-          } else if (detectedEl) {
-            detectedEl.textContent = "";
-          }
+          // ── MOSTRAR PANEL DE CONFIRMACIÓN ──────────────────────
           if (cleaned) {
-            if (gsap) {
-              gsap
-                .timeline()
-                .to(D("input-display"), { opacity: 0, y: -6, duration: 0.18 })
-                .call(() => {
-                  calc.setExpr(cleaned);
-                  calc.updatePreview();
-                })
-                .to(D("input-display"), {
-                  opacity: 1,
-                  y: 0,
-                  duration: 0.28,
-                  ease: "power3.out",
-                });
-            } else {
-              calc.setExpr(cleaned);
-              calc.updatePreview();
-            }
-            ui.toast("Ecuación detectada: " + cleaned, "success");
-            setTimeout(() => calc.calculate(), 900);
+            this._pendingExpr = cleaned;
+            this._showConfirm(cleaned);
           } else {
+            statusEl.textContent = "✗ No se detectó ecuación";
             ui.toast(
               "No se detectó expresión válida. Intenta mejorar la imagen.",
               "error",
@@ -3032,12 +3240,11 @@ window.QC = (() => {
           statusEl.textContent = "✗ Error: " + e.message;
           ui.toast("Error OCR: " + e.message, "error");
         } finally {
-          zone.classList.remove("processing");
-          if (gsap)
-            gsap.to(zone, {
-              borderColor: "var(--border-bright)",
-              duration: 0.35,
-            });
+          if (btn) {
+            btn.disabled = false;
+            btn.classList.remove("loading");
+          }
+          // Ocultar barra después de 3 s
           setTimeout(() => {
             if (gsap)
               gsap.to(prog, {
@@ -3057,19 +3264,52 @@ window.QC = (() => {
               prog.style.display = "none";
               bar.style.width = "0%";
             }
-          }, 2800);
+          }, 3000);
         }
       });
     },
-    /**
-     * Pipeline OCR → expresión matemática evaluable.
-     * Prioridad: integrales → derivadas → límites → expresión general.
-     */
+
+    /** Muestra el panel de confirmación con la expresión detectada */
+    _showConfirm(cleaned) {
+      const panel = D("ocr-confirm-panel");
+      const exprEl = D("ocr-confirm-expr");
+      const typeEl = D("ocr-confirm-type");
+      const det = D("ocr-detected-type");
+      if (!panel || !exprEl) return;
+
+      // Tipo de operación
+      const typeStr = cleaned.startsWith("integrate(")
+        ? "∫ INTEGRAL"
+        : cleaned.startsWith("diff(")
+          ? "d/dx DERIVADA"
+          : cleaned.startsWith("limit(")
+            ? "lim LÍMITE"
+            : "EXPRESIÓN";
+      if (typeEl) typeEl.textContent = typeStr;
+      if (det) det.textContent = typeStr + " DETECTADA";
+
+      // Mostrar expresión en formato legible
+      const readable = cleaned
+        .replace(/^integrate\((.+),\s*([a-z])\)$/, "∫ ($1) d$2")
+        .replace(/^diff\((.+),\s*([a-z])\)$/, "d/d$2 ($1)")
+        .replace(/^limit\((.+),\s*([a-z]),\s*(.+)\)$/, "lim $2→$3 ($1)");
+      exprEl.textContent = readable;
+
+      panel.hidden = false;
+      if (gsap) {
+        gsap.fromTo(
+          panel,
+          { opacity: 0, y: 8 },
+          { opacity: 1, y: 0, duration: 0.35, ease: "power3.out" },
+        );
+      }
+
+      ui.toast("Ecuación detectada. Confirma o sube otra imagen.", "success");
+    },
+
     _ocrToMathExpr(text) {
       if (!text) return null;
       const norm = text.replace(/\r?\n/g, " ").replace(/\s+/g, " ").trim();
-
-      // Pasar por todos los detectores en orden de especificidad
       return (
         _ocrDetectIntegral(norm) ||
         _ocrDetectDerivative(norm) ||
@@ -3082,10 +3322,6 @@ window.QC = (() => {
     },
   };
 
-  /**
-   * Limpieza matemática básica de cadena OCR.
-   * Usada internamente y como función de utilidad compartida.
-   */
   function _cleanOCRRaw(s) {
     return _ocrNormalize(s || "").replace(/\s/g, "");
   }

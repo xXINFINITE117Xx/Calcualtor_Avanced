@@ -472,9 +472,11 @@
         </div>
       </div><!-- /keyboard-section -->
 
-      <!-- OCR mejorado — con detección de tipo de ecuación -->
+      <!-- OCR — Vista previa + confirmación + análisis -->
       <section class="ocr-section" aria-label="OCR — Imagen a ecuación">
         <p class="ocr-title" aria-hidden="true">OCR — IMAGEN A ECUACIÓN</p>
+
+        <!-- Zona de drop / upload (se oculta cuando hay imagen cargada) -->
         <div class="ocr-drop-zone" id="ocr-drop-zone" role="button" tabindex="0"
           aria-label="Arrastra o haz clic para subir imagen con ecuación"
           onclick="document.getElementById('ocr-file-input').click()"
@@ -484,11 +486,29 @@
             <div class="ocr-ripple" aria-hidden="true"></div>
           </div>
           <p class="ocr-text">Arrastra o <span>haz clic para subir</span></p>
-          <p class="ocr-hint" aria-hidden="true">∫ Integrales · d/dx Derivadas · lim Límites · Ecuaciones</p>
+          <p class="ocr-hint" aria-hidden="true">∫ Integrales · d/dx Derivadas · lim Límites</p>
         </div>
-        <div class="ocr-detected-type" id="ocr-detected-type" aria-live="polite"></div>
+
         <input type="file" id="ocr-file-input" accept="image/png,image/jpeg,image/bmp,image/webp,image/tiff"
           onchange="QC.ocr.handleFile(event)" aria-hidden="true" tabindex="-1" />
+
+        <!-- PANEL DE PREVISUALIZACIÓN (oculto hasta que se carga imagen) -->
+        <div class="ocr-preview-panel" id="ocr-preview-panel" hidden>
+          <!-- Miniatura de la imagen -->
+          <div class="ocr-thumb-wrap">
+            <img id="ocr-thumb" class="ocr-thumb" alt="Vista previa de la imagen subida" />
+            <button class="ocr-thumb-close" type="button" onclick="QC.ocr.reset()" aria-label="Quitar imagen">✕</button>
+          </div>
+
+          <!-- Botón principal de análisis -->
+          <button class="ocr-analyze-btn" id="ocr-analyze-btn" type="button" onclick="QC.ocr.runAnalysis()"
+            aria-label="Analizar ecuación con Tesseract">
+            <span class="ocr-analyze-icon" aria-hidden="true">🔍</span>
+            <span class="ocr-analyze-label">ANALIZAR ECUACIÓN</span>
+          </button>
+        </div>
+
+        <!-- Barra de progreso (oculta hasta que empieza Tesseract) -->
         <div class="ocr-progress" id="ocr-progress" role="status" aria-live="polite" style="display:none">
           <div class="progress-bar-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <div class="progress-bar-fill" id="ocr-bar"></div>
@@ -496,6 +516,25 @@
           </div>
           <p class="ocr-status" id="ocr-status">Inicializando…</p>
         </div>
+
+        <!-- PANEL DE CONFIRMACIÓN (oculto hasta que OCR termina con éxito) -->
+        <div class="ocr-confirm-panel" id="ocr-confirm-panel" hidden>
+          <div class="ocr-confirm-label">Ecuación detectada:</div>
+          <div class="ocr-confirm-expr" id="ocr-confirm-expr" aria-live="polite"></div>
+          <div class="ocr-confirm-type" id="ocr-confirm-type"></div>
+          <div class="ocr-confirm-actions">
+            <button class="ocr-confirm-btn ocr-confirm-accept" type="button" onclick="QC.ocr.accept()"
+              aria-label="Aceptar ecuación y calcular">
+              ✓ ACEPTAR Y CALCULAR
+            </button>
+            <button class="ocr-confirm-btn ocr-confirm-retry" type="button" onclick="QC.ocr.reset()"
+              aria-label="Subir otra imagen">
+              ↺ OTRA IMAGEN
+            </button>
+          </div>
+        </div>
+
+        <div class="ocr-detected-type" id="ocr-detected-type" aria-live="polite"></div>
       </section>
 
     </aside><!-- /calc-panel -->
@@ -546,12 +585,15 @@
           <button class="btn-small btn-small-danger" type="button" onclick="QC.steps.clear()">✕ LIMPIAR</button>
         </div>
       </header>
+      <!-- Línea de progreso de pasos (se muestra durante animación) -->
+      <div class="steps-progress-bar" id="steps-progress-bar" aria-hidden="true">
+        <div class="steps-progress-fill" id="steps-progress-fill"></div>
+      </div>
       <div class="steps-container" id="steps-container" role="log" aria-live="polite">
         <div class="empty-state" id="steps-empty">
           <div class="empty-state-icon" aria-hidden="true">∫</div>
           <p class="empty-state-text">
-            Usa el panel <strong>SIMBÓLICO</strong> para integrales,<br>
-            derivadas y límites con pasos detallados
+            Ingresa una integral o expresión<br>y presiona <strong>CALCULAR</strong>
           </p>
         </div>
       </div>
