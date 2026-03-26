@@ -8,7 +8,7 @@
   <meta name="description" content="QuantumCalc — Cálculo simbólico, álgebra, gráficas 2D/3D, OCR e historial" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>QuantumCalc — Calculadora Científica</title>
+  <title>QuantumCalc — Calculadora Científica v4.0</title>
 
   <!-- FAVICON SVG embebido -->
   <link rel="icon" type="image/svg+xml"
@@ -26,6 +26,14 @@
     <link rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" />
   </noscript>
+
+  <!-- Theme init — must run before render to avoid flash -->
+  <script>
+    (function () {
+      const saved = localStorage.getItem('qc-theme');
+      if (saved === 'light') document.documentElement.setAttribute('data-theme', 'light');
+    })();
+  </script>
 
   <!-- GSAP síncrono con fallback stub -->
   <script>
@@ -173,6 +181,11 @@
         <span class="hdr-btn-icon" aria-hidden="true">📊</span>
         <span class="hdr-btn-label">EXCEL</span>
       </button>
+      <button class="hdr-btn hdr-btn-theme" id="theme-toggle-btn" type="button" onclick="QC.ui.toggleTheme()"
+        aria-label="Cambiar tema" title="Modo oscuro/claro">
+        <span class="hdr-btn-icon" id="theme-icon" aria-hidden="true">☀</span>
+        <span class="hdr-btn-label" id="theme-label">CLARO</span>
+      </button>
     </div>
 
     <button class="mobile-menu-btn" id="mobile-menu-btn" type="button" aria-label="Menú" aria-expanded="false"
@@ -229,6 +242,8 @@
           <div id="input-display" contenteditable="true" spellcheck="false" inputmode="text" role="textbox"
             aria-label="Expresión matemática" aria-multiline="false"></div>
           <div id="result-display" aria-live="polite" aria-label="Vista previa"></div>
+          <div class="display-copy-btn" id="display-copy-btn" title="Copiar expresión"
+            onclick="QC.clipboard.copyExpr()">⎘</div>
           <div class="display-typing-indicator" id="typing-indicator" aria-hidden="true">
             <span></span><span></span><span></span>
           </div>
@@ -250,6 +265,8 @@
           onclick="QC.calc.switchMode('algebra')">ÁLGEBRA</button>
         <button class="mode-tab" type="button" data-mode="stats" role="tab" aria-selected="false"
           onclick="QC.calc.switchMode('stats')">STATS</button>
+        <button class="mode-tab mode-tab-new" type="button" data-mode="editor" role="tab" aria-selected="false"
+          onclick="QC.calc.switchMode('editor')">✏ EDITOR</button>
       </nav>
 
       <!-- Teclado virtual -->
@@ -462,6 +479,77 @@
           </div>
         </div>
 
+        <!-- Panel EDITOR VISUAL (NUEVO) -->
+        <div id="fn-editor" style="display:none" role="tabpanel">
+          <p class="key-group-label" aria-hidden="true">// EDITOR VISUAL DE ECUACIONES</p>
+          <p class="key-subgroup">CONSTRUCCIÓN SIN LaTeX</p>
+          <div class="key-row key-row-3">
+            <button class="key key-sym key-editor-frac" type="button" onclick="QC.editor.insertFrac()"
+              aria-label="Fracción">
+              <span class="key-sym-main">a/b</span>
+              <span class="key-sym-sub">fracción</span>
+            </button>
+            <button class="key key-sym key-editor-pow" type="button" onclick="QC.editor.insertPow()"
+              aria-label="Potencia">
+              <span class="key-sym-main">xⁿ</span>
+              <span class="key-sym-sub">potencia</span>
+            </button>
+            <button class="key key-sym key-editor-sqrt" type="button" onclick="QC.editor.insertSqrt()"
+              aria-label="Raíz cuadrada">
+              <span class="key-sym-main">√x</span>
+              <span class="key-sym-sub">raíz</span>
+            </button>
+          </div>
+          <div class="key-row key-row-3">
+            <button class="key key-sym key-editor-nrt" type="button" onclick="QC.editor.insertNthRoot()"
+              aria-label="Raíz n-ésima">
+              <span class="key-sym-main">ⁿ√x</span>
+              <span class="key-sym-sub">raíz n</span>
+            </button>
+            <button class="key key-sym key-integral" type="button" onclick="QC.editor.insertIntegral()"
+              aria-label="Integral">
+              <span class="key-sym-main">∫ₐᵇ</span>
+              <span class="key-sym-sub">integral</span>
+            </button>
+            <button class="key key-sym key-deriv" type="button" onclick="QC.editor.insertDerivative()"
+              aria-label="Derivada">
+              <span class="key-sym-main">d/dx</span>
+              <span class="key-sym-sub">derivada</span>
+            </button>
+          </div>
+          <div class="key-row key-row-3">
+            <button class="key key-sym key-editor-sum" type="button" onclick="QC.editor.insertSum()"
+              aria-label="Sumatoria">
+              <span class="key-sym-main">Σᵢ</span>
+              <span class="key-sym-sub">sumatoria</span>
+            </button>
+            <button class="key key-sym key-editor-prod" type="button" onclick="QC.editor.insertProduct()"
+              aria-label="Productoria">
+              <span class="key-sym-main">Πᵢ</span>
+              <span class="key-sym-sub">productoria</span>
+            </button>
+            <button class="key key-sym key-limit" type="button" onclick="QC.editor.insertLimit()" aria-label="Límite">
+              <span class="key-sym-main">lim</span>
+              <span class="key-sym-sub">límite</span>
+            </button>
+          </div>
+          <p class="key-subgroup">MATRICES</p>
+          <div class="key-row key-row-3">
+            <button class="key key-fn" type="button" onclick="QC.editor.insertMatrix(2,2)">2×2</button>
+            <button class="key key-fn" type="button" onclick="QC.editor.insertMatrix(3,3)">3×3</button>
+            <button class="key key-fn" type="button" onclick="QC.editor.insertMatrix(2,3)">2×3</button>
+          </div>
+          <p class="key-subgroup">CONSTANTES</p>
+          <div class="key-row key-row-6">
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('pi')">π</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('e')">e</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('i')">i</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('Infinity')">∞</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('phi')">φ</button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('tau')">τ</button>
+          </div>
+        </div>
+
         <!-- Botón calcular principal -->
         <div class="calc-btn-wrap">
           <button class="key key-calc-main" type="button" onclick="QC.calc.calculate()"
@@ -537,6 +625,34 @@
         <div class="ocr-detected-type" id="ocr-detected-type" aria-live="polite"></div>
       </section>
 
+      <!-- ════ CANVAS — ESCRITURA A MANO ════ -->
+      <section class="canvas-section" aria-label="Escritura a mano">
+        <p class="canvas-title" aria-hidden="true">✍ ECUACIÓN A MANO ALZADA</p>
+        <div class="canvas-wrap" id="canvas-wrap">
+          <canvas id="handwriting-canvas" width="340" height="150" aria-label="Canvas para dibujar ecuaciones"
+            role="img"></canvas>
+          <div class="canvas-hint" id="canvas-hint">Dibuja tu ecuación aquí</div>
+        </div>
+        <div class="canvas-controls">
+          <button class="canvas-btn canvas-btn-clear" type="button" onclick="QC.handwriting.clear()"
+            aria-label="Limpiar canvas">✕ LIMPIAR</button>
+          <button class="canvas-btn canvas-btn-recognize" type="button" onclick="QC.handwriting.recognize()"
+            aria-label="Reconocer ecuación">🔍 RECONOCER</button>
+          <div class="canvas-pen-size">
+            <label for="canvas-pen" class="sr-only">Grosor del trazo</label>
+            <input type="range" id="canvas-pen" min="2" max="12" value="4"
+              oninput="QC.handwriting.setPenSize(this.value)" />
+            <span class="canvas-pen-label">✏</span>
+          </div>
+        </div>
+        <div class="canvas-result" id="canvas-result" hidden>
+          <span class="canvas-result-label">Detectado:</span>
+          <span class="canvas-result-expr" id="canvas-result-expr"></span>
+          <button class="canvas-use-btn" type="button" onclick="QC.handwriting.useResult()"
+            aria-label="Usar esta ecuación">↑ USAR</button>
+        </div>
+      </section>
+
     </aside><!-- /calc-panel -->
 
     <!-- ─── COLUMNA 2 · GRÁFICAS ─── -->
@@ -582,6 +698,7 @@
         </div>
         <div class="panel-actions" role="group">
           <button class="btn-small" type="button" onclick="QC.steps.replay()">↺ REPETIR</button>
+          <button class="btn-small btn-small-copy" type="button" onclick="QC.clipboard.copySteps()">⎘ COPIAR</button>
           <button class="btn-small btn-small-danger" type="button" onclick="QC.steps.clear()">✕ LIMPIAR</button>
         </div>
       </header>

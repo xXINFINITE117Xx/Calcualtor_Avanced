@@ -3396,3 +3396,476 @@ body::after {
 .op-symbol {
   color: var(--accent-orange);
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   NEW FEATURES v4.0 — Theme · Canvas · Editor · Clipboard · Copy
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────────
+   LIGHT THEME
+   ───────────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg-primary: #f0f4f8;
+  --bg-secondary: #e2eaf3;
+  --bg-panel: #dde6f0;
+  --bg-card: #d0dcea;
+  --border-dim: #b0c4d8;
+  --border-bright: #7a9dbf;
+  --border-hover: #4a7da0;
+  --accent-cyan: #0077aa;
+  --accent-green: #007a44;
+  --accent-orange: #c94c00;
+  --accent-purple: #7b3fd4;
+  --accent-yellow: #b08800;
+  --accent-red: #c0002a;
+  --text-primary: #0d2036;
+  --text-secondary: #365a78;
+  --text-dim: #7a9dbb;
+  --glow-cyan: 0 0 12px rgba(0, 119, 170, .2);
+  --glow-green: 0 0 12px rgba(0, 122, 68, .2);
+  --glow-orange: 0 0 10px rgba(201, 76, 0, .2);
+  --glow-purple: 0 0 10px rgba(123, 63, 212, .2);
+}
+
+[data-theme="light"] body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .header {
+  background: rgba(224, 235, 246, .95);
+  border-bottom-color: var(--border-bright);
+}
+
+[data-theme="light"] .scanlines {
+  opacity: 0.4;
+}
+
+[data-theme="light"] .bg-noise {
+  opacity: 0.15;
+}
+
+[data-theme="light"] body::before {
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(0, 119, 170, .06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(123, 63, 212, .06) 0%, transparent 50%);
+}
+
+[data-theme="light"] body::after {
+  background-image:
+    linear-gradient(rgba(0, 119, 170, .04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 119, 170, .04) 1px, transparent 1px);
+}
+
+[data-theme="light"] .key {
+  background: var(--bg-secondary);
+  border-color: var(--border-dim);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .key:hover {
+  background: var(--bg-card);
+  border-color: var(--accent-cyan);
+}
+
+[data-theme="light"] .display-main {
+  background: var(--bg-secondary);
+  border-color: var(--border-bright);
+}
+
+[data-theme="light"] #input-display {
+  color: var(--accent-cyan);
+}
+
+[data-theme="light"] .history-drawer,
+[data-theme="light"] .calc-panel,
+[data-theme="light"] .graph-panel,
+[data-theme="light"] .steps-panel {
+  background: var(--bg-panel);
+  border-color: var(--border-dim);
+}
+
+[data-theme="light"] .step-card {
+  background: var(--bg-secondary);
+  border-color: var(--border-dim);
+  color: var(--text-primary);
+}
+
+[data-theme="light"] code {
+  color: var(--accent-cyan);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   THEME TOGGLE BUTTON
+   ───────────────────────────────────────────────────────────────── */
+.hdr-btn-theme {
+  color: var(--accent-yellow) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   DISPLAY COPY BUTTON
+   ───────────────────────────────────────────────────────────────── */
+.display-main {
+  position: relative;
+}
+
+.display-copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 212, 255, .08);
+  border: 1px solid rgba(0, 212, 255, .2);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: .9rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--trans-fast), color var(--trans-fast), background var(--trans-fast);
+  z-index: 5;
+}
+
+.display-main:hover .display-copy-btn {
+  opacity: 1;
+}
+
+.display-copy-btn:hover {
+  color: var(--accent-cyan);
+  background: rgba(0, 212, 255, .15);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   CANVAS — HANDWRITING RECOGNITION
+   ───────────────────────────────────────────────────────────────── */
+.canvas-section {
+  margin-top: var(--gap-lg);
+  padding: var(--gap-md);
+  background: rgba(0, 212, 255, .03);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+}
+
+.canvas-title {
+  font-family: var(--font-display);
+  font-size: .68rem;
+  letter-spacing: .14em;
+  color: var(--accent-green);
+  margin-bottom: var(--gap-sm);
+  text-transform: uppercase;
+}
+
+.canvas-wrap {
+  position: relative;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border-bright);
+  background: var(--bg-card);
+  touch-action: none;
+}
+
+#handwriting-canvas {
+  display: block;
+  width: 100%;
+  height: 150px;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.canvas-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-mono);
+  font-size: .72rem;
+  color: var(--text-dim);
+  pointer-events: none;
+  transition: opacity .3s;
+  user-select: none;
+}
+
+.canvas-hint.hidden {
+  opacity: 0;
+}
+
+.canvas-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  margin-top: var(--gap-sm);
+  flex-wrap: wrap;
+}
+
+.canvas-btn {
+  padding: 5px 12px;
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  letter-spacing: .08em;
+  font-weight: 700;
+  border: 1px solid;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+}
+
+.canvas-btn-clear {
+  background: rgba(255, 68, 102, .1);
+  border-color: rgba(255, 68, 102, .35);
+  color: var(--accent-red);
+}
+
+.canvas-btn-clear:hover {
+  background: rgba(255, 68, 102, .2);
+}
+
+.canvas-btn-recognize {
+  background: rgba(0, 212, 255, .1);
+  border-color: rgba(0, 212, 255, .35);
+  color: var(--accent-cyan);
+  flex: 1;
+}
+
+.canvas-btn-recognize:hover {
+  background: rgba(0, 212, 255, .2);
+  box-shadow: var(--glow-cyan);
+}
+
+.canvas-pen-size {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.canvas-pen-size input[type="range"] {
+  width: 60px;
+  accent-color: var(--accent-cyan);
+  cursor: pointer;
+}
+
+.canvas-pen-label {
+  font-size: .8rem;
+}
+
+.canvas-result {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-sm);
+  margin-top: var(--gap-sm);
+  padding: 8px 12px;
+  background: rgba(0, 255, 136, .06);
+  border: 1px solid rgba(0, 255, 136, .2);
+  border-radius: 6px;
+  animation: fadeIn .3s ease;
+}
+
+.canvas-result-label {
+  font-size: .7rem;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.canvas-result-expr {
+  flex: 1;
+  font-family: var(--font-mono);
+  color: var(--accent-green);
+  font-size: .82rem;
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.canvas-use-btn {
+  background: rgba(0, 255, 136, .15);
+  border: 1px solid rgba(0, 255, 136, .35);
+  color: var(--accent-green);
+  border-radius: 5px;
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: .68rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+  white-space: nowrap;
+}
+
+.canvas-use-btn:hover {
+  background: rgba(0, 255, 136, .28);
+  box-shadow: var(--glow-green);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   VISUAL EDITOR KEYS
+   ───────────────────────────────────────────────────────────────── */
+.key-editor-frac {
+  border-color: rgba(56, 189, 248, .35) !important;
+}
+
+.key-editor-frac:hover {
+  box-shadow: 0 0 10px rgba(56, 189, 248, .3) !important;
+}
+
+.key-editor-pow {
+  border-color: rgba(255, 215, 0, .35) !important;
+}
+
+.key-editor-pow:hover {
+  box-shadow: 0 0 10px rgba(255, 215, 0, .25) !important;
+}
+
+.key-editor-sqrt {
+  border-color: rgba(0, 255, 136, .35) !important;
+}
+
+.key-editor-sqrt:hover {
+  box-shadow: var(--glow-green) !important;
+}
+
+.key-editor-nrt {
+  border-color: rgba(0, 255, 136, .35) !important;
+}
+
+.key-editor-sum {
+  border-color: rgba(255, 107, 43, .35) !important;
+}
+
+.key-editor-sum:hover {
+  box-shadow: var(--glow-orange) !important;
+}
+
+.key-editor-prod {
+  border-color: rgba(168, 85, 247, .35) !important;
+}
+
+.key-editor-prod:hover {
+  box-shadow: var(--glow-purple) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   MODE TAB — NEW badge
+   ───────────────────────────────────────────────────────────────── */
+.mode-tab-new {
+  border-color: rgba(0, 255, 136, .4) !important;
+  color: var(--accent-green) !important;
+}
+
+.mode-tab-new.active,
+.mode-tab-new:hover {
+  background: rgba(0, 255, 136, .12) !important;
+  color: var(--accent-green) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   COPY BUTTON IN STEPS
+   ───────────────────────────────────────────────────────────────── */
+.btn-small-copy {
+  background: rgba(0, 212, 255, .08) !important;
+  border-color: rgba(0, 212, 255, .25) !important;
+  color: var(--accent-cyan) !important;
+}
+
+.btn-small-copy:hover {
+  background: rgba(0, 212, 255, .16) !important;
+}
+
+/* Step card copy button */
+.step-copy-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 212, 255, .08);
+  border: 1px solid rgba(0, 212, 255, .15);
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: .7rem;
+  padding: 2px 6px;
+  cursor: pointer;
+  opacity: 0;
+  transition: all var(--trans-fast);
+  font-family: var(--font-mono);
+}
+
+.step-card:hover .step-copy-btn {
+  opacity: 1;
+}
+
+.step-copy-btn:hover {
+  color: var(--accent-cyan);
+  background: rgba(0, 212, 255, .18);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   DERIVATIVE STEPS — special styling
+   ───────────────────────────────────────────────────────────────── */
+.step-card.step-deriv::before {
+  background: var(--accent-green);
+  box-shadow: 0 0 12px rgba(0, 255, 136, .5);
+}
+
+.step-rule-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: .68rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: .06em;
+  margin-right: 6px;
+  background: rgba(0, 255, 136, .12);
+  border: 1px solid rgba(0, 255, 136, .3);
+  color: var(--accent-green);
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   LIGHT THEME — Canvas & new features
+   ───────────────────────────────────────────────────────────────── */
+[data-theme="light"] .canvas-section {
+  background: rgba(0, 119, 170, .04);
+  border-color: var(--border-dim);
+}
+
+[data-theme="light"] .canvas-wrap {
+  background: #fff;
+  border-color: var(--border-bright);
+}
+
+[data-theme="light"] #handwriting-canvas {
+  background: #fff;
+}
+
+[data-theme="light"] .canvas-result {
+  background: rgba(0, 122, 68, .06);
+  border-color: rgba(0, 122, 68, .2);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Copy toast flash */
+@keyframes copyFlash {
+
+  0%,
+  100% {
+    box-shadow: none;
+  }
+
+  50% {
+    box-shadow: 0 0 0 3px rgba(0, 255, 136, .4);
+  }
+}
+
+.copy-flash {
+  animation: copyFlash .4s ease;
+}

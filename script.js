@@ -3985,6 +3985,861 @@ window.QC = (() => {
   };
 
   /* ════════════════════════════════════════════════════
+   MÓDULO: theme — Dark/Light toggle con localStorage
+   ════════════════════════════════════════════════════ */
+  // Extend ui with theme toggle
+  ui.toggleTheme = function () {
+    const current = document.documentElement.getAttribute("data-theme");
+    const next = current === "light" ? "dark" : "light";
+    if (next === "dark") {
+      document.documentElement.removeAttribute("data-theme");
+    } else {
+      document.documentElement.setAttribute("data-theme", "light");
+    }
+    localStorage.setItem("qc-theme", next);
+    const icon = D("theme-icon");
+    const label = D("theme-label");
+    if (icon) icon.textContent = next === "light" ? "🌙" : "☀";
+    if (label) label.textContent = next === "light" ? "OSCURO" : "CLARO";
+    ui.toast(
+      `Tema ${next === "light" ? "claro" : "oscuro"} activado`,
+      "info",
+      1800,
+    );
+  };
+
+  ui._initTheme = function () {
+    const saved = localStorage.getItem("qc-theme") || "dark";
+    const icon = D("theme-icon");
+    const label = D("theme-label");
+    if (saved === "light") {
+      document.documentElement.setAttribute("data-theme", "light");
+      if (icon) icon.textContent = "🌙";
+      if (label) label.textContent = "OSCURO";
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+      if (icon) icon.textContent = "☀";
+      if (label) label.textContent = "CLARO";
+    }
+  };
+
+  /* ════════════════════════════════════════════════════
+   MÓDULO: clipboard — Copiar al portapapeles
+   ════════════════════════════════════════════════════ */
+  const clipboard = {
+    async _copy(text, label) {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.cssText =
+            "position:fixed;top:-9999px;left:-9999px;opacity:0";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          ta.remove();
+        }
+        ui.toast(`${label || "Copiado"} al portapapeles ✓`, "success", 2200);
+        return true;
+      } catch (e) {
+        ui.toast("No se pudo copiar: " + e.message, "error");
+        return false;
+      }
+    },
+
+    copyExpr() {
+      const expr = calc.getExpr();
+      if (!expr) {
+        ui.toast("Nada que copiar", "warn");
+        return;
+      }
+      const dm = D("display-main");
+      this._copy(expr, "Expresión");
+      if (dm) dm.classList.add("copy-flash");
+      setTimeout(() => dm && dm.classList.remove("copy-flash"), 450);
+    },
+
+    copyResult() {
+      const rd = D("result-display");
+      const text = rd?.textContent?.replace(/^[=≈]\s*/, "") || "";
+      if (!text) {
+        ui.toast("Sin resultado aún", "warn");
+        return;
+      }
+      this._copy(text, "Resultado");
+    },
+
+    copySteps() {
+      if (!S.allSteps || !S.allSteps.length) {
+        ui.toast("Sin pasos que copiar", "warn");
+        return;
+      }
+      const lines = S.allSteps.map((s, i) => {
+        const label = s.label || `Paso ${i + 1}`;
+        const content =
+          s.opts?.stepExpr ||
+          s.opts?.stepResult ||
+          (s.content || "").replace(/<[^>]+>/g, "").trim() ||
+          (s.value != null ? String(s.value) : "");
+        return `[${label}] ${content}`;
+      });
+      const header = `QuantumCalc — ${calc.getExpr()}\n${"─".repeat(50)}\n`;
+      this._copy(header + lines.join("\n"), "Pasos");
+    },
+
+    copyStepCard(text) {
+      this._copy(text, "Paso");
+    },
+
+    copyLatex() {
+      const expr = calc.getExpr();
+      if (!expr) {
+        ui.toast("Nada que copiar", "warn");
+        return;
+      }
+      // Basic LaTeX conversion
+      let latex = expr
+        .replace(/sqrt\(([^)]+)\)/g, "\\sqrt{$1}")
+        .replace(/\^(\d+)/g, "^{$1}")
+        .replace(/\*\*/g, "^")
+        .replace(/\*/g, " \\cdot ")
+        .replace(/integrate\(([^,]+),\s*([^)]+)\)/g, "\\int $1 \\, d$2")
+        .replace(
+          /diff\(([^,]+),\s*([^)]+)\)/g,
+          "\\frac{d}{d$2}\\left($1\\right)",
+        )
+        .replace(/pi/g, "\\pi")
+        .replace(/infinity/gi, "\\infty")
+        .replace(/Infinity/g, "\\infty");
+      this._copy("$" + latex + "$", "LaTeX");
+    },
+  };
+
+  /* ════════════════════════════════════════════════════
+   MÓDULO: editor — Visual equation builder
+   ════════════════════════════════════════════════════ */
+  const editor = {
+    _prompt(msg, placeholder, callback) {
+      // Use simple prompt for now, could be enhanced with modal
+      const val = window.prompt(msg, placeholder || "");
+      if (val !== null) callback(val.trim());
+    },
+
+    insertFrac() {
+      this._prompt("Numerador:", "a", (num) => {
+        if (!num) return;
+        this._prompt("Denominador:", "b", (den) => {
+          if (!den) return;
+          calc.insert(`(${num})/(${den})`);
+          ui.toast("Fracción insertada", "info", 1500);
+        });
+      });
+    },
+
+    insertPow() {
+      this._prompt("Base:", "x", (base) => {
+        if (!base) return;
+        this._prompt("Exponente:", "2", (exp) => {
+          if (!exp) return;
+          calc.insert(`(${base})^(${exp})`);
+        });
+      });
+    },
+
+    insertSqrt() {
+      this._prompt("Expresión bajo la raíz:", "x", (expr) => {
+        if (!expr) return;
+        calc.insert(`sqrt(${expr})`);
+      });
+    },
+
+    insertNthRoot() {
+      this._prompt("Índice de la raíz:", "3", (n) => {
+        if (!n) return;
+        this._prompt("Expresión bajo la raíz:", "x", (expr) => {
+          if (!expr) return;
+          calc.insert(`nthRoot(${expr}, ${n})`);
+        });
+      });
+    },
+
+    insertIntegral() {
+      this._prompt("Función a integrar (ej: x^2):", "x^2", (f) => {
+        if (!f) return;
+        this._prompt("Variable (ej: x):", "x", (v) => {
+          if (!v) return;
+          const hasBounds = window.confirm(
+            "¿Integral definida? (OK = sí, Cancelar = indefinida)",
+          );
+          if (hasBounds) {
+            this._prompt("Límite inferior:", "0", (a) => {
+              this._prompt("Límite superior:", "1", (b) => {
+                calc.setExpr(
+                  `integrate(${f}, ${v || "x"}, ${a || "0"}, ${b || "1"})`,
+                );
+                calc.updatePreview();
+              });
+            });
+          } else {
+            calc.setExpr(`integrate(${f}, ${v || "x"})`);
+            calc.updatePreview();
+          }
+        });
+      });
+    },
+
+    insertDerivative() {
+      this._prompt("Función a derivar (ej: x^3):", "x^3", (f) => {
+        if (!f) return;
+        this._prompt("Variable (ej: x):", "x", (v) => {
+          if (!v) return;
+          const order = window.prompt("Orden de la derivada:", "1") || "1";
+          if (parseInt(order) > 1) {
+            calc.setExpr(`diff(${f}, ${v}, ${order})`);
+          } else {
+            calc.setExpr(`diff(${f}, ${v})`);
+          }
+          calc.updatePreview();
+        });
+      });
+    },
+
+    insertSum() {
+      this._prompt("Expresión a sumar (usa i como índice):", "i^2", (expr) => {
+        if (!expr) return;
+        this._prompt("Límite inferior:", "1", (a) => {
+          this._prompt("Límite superior:", "10", (b) => {
+            // Build a JS sum expression for Math.js
+            calc.setExpr(`sum(${expr}, i, ${a || "1"}, ${b || "10"})`);
+            calc.updatePreview();
+            ui.toast(
+              "Usa el botón Σ en SIMBÓLICO para evaluarla",
+              "info",
+              3500,
+            );
+          });
+        });
+      });
+    },
+
+    insertProduct() {
+      this._prompt("Expresión (usa i como índice):", "i", (expr) => {
+        if (!expr) return;
+        this._prompt("Límite inferior:", "1", (a) => {
+          this._prompt("Límite superior:", "5", (b) => {
+            calc.setExpr(`prod(${expr}, i, ${a || "1"}, ${b || "5"})`);
+            calc.updatePreview();
+          });
+        });
+      });
+    },
+
+    insertLimit() {
+      this._prompt("Función (ej: sin(x)/x):", "sin(x)/x", (f) => {
+        if (!f) return;
+        this._prompt("Variable:", "x", (v) => {
+          this._prompt("Punto al que tiende:", "0", (pt) => {
+            calc.setExpr(`limit(${f}, ${v || "x"}, ${pt || "0"})`);
+            calc.updatePreview();
+          });
+        });
+      });
+    },
+
+    insertMatrix(rows, cols) {
+      const cells = [];
+      for (let r = 0; r < rows; r++) {
+        const row = [];
+        for (let c = 0; c < cols; c++) row.push("0");
+        cells.push("[" + row.join(",") + "]");
+      }
+      calc.insert(`matrix([${cells.join(",")}])`);
+      ui.toast(
+        `Matriz ${rows}×${cols} insertada — edita los valores`,
+        "info",
+        3000,
+      );
+    },
+  };
+
+  /* ════════════════════════════════════════════════════
+   MÓDULO: handwriting — Canvas + AI recognition
+   ════════════════════════════════════════════════════ */
+  const handwriting = {
+    _canvas: null,
+    _ctx: null,
+    _drawing: false,
+    _penSize: 4,
+    _lastResult: null,
+    _hasStrokes: false,
+
+    init() {
+      const canvas = D("handwriting-canvas");
+      if (!canvas) return;
+      this._canvas = canvas;
+      this._ctx = canvas.getContext("2d");
+      this._setupCanvas();
+      this._bindEvents();
+    },
+
+    _setupCanvas() {
+      const ctx = this._ctx;
+      const canvas = this._canvas;
+      // Retina/HiDPI
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = (rect.width || 340) * dpr;
+      canvas.height = 150 * dpr;
+      ctx.scale(dpr, dpr);
+      ctx.lineWidth = this._penSize;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.strokeStyle =
+        getComputedStyle(document.documentElement)
+          .getPropertyValue("--accent-cyan")
+          .trim() || "#00d4ff";
+    },
+
+    _getPos(e) {
+      const rect = this._canvas.getBoundingClientRect();
+      if (e.touches) {
+        return {
+          x: e.touches[0].clientX - rect.left,
+          y: e.touches[0].clientY - rect.top,
+        };
+      }
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    },
+
+    _bindEvents() {
+      const c = this._canvas;
+      c.addEventListener("mousedown", (e) => {
+        this._drawing = true;
+        this._startStroke(e);
+      });
+      c.addEventListener("mousemove", (e) => {
+        if (this._drawing) this._continueStroke(e);
+      });
+      c.addEventListener("mouseup", () => {
+        this._drawing = false;
+        this._ctx.beginPath();
+      });
+      c.addEventListener("mouseleave", () => {
+        this._drawing = false;
+        this._ctx.beginPath();
+      });
+      c.addEventListener(
+        "touchstart",
+        (e) => {
+          e.preventDefault();
+          this._drawing = true;
+          this._startStroke(e);
+        },
+        { passive: false },
+      );
+      c.addEventListener(
+        "touchmove",
+        (e) => {
+          e.preventDefault();
+          if (this._drawing) this._continueStroke(e);
+        },
+        { passive: false },
+      );
+      c.addEventListener("touchend", () => {
+        this._drawing = false;
+        this._ctx.beginPath();
+      });
+    },
+
+    _startStroke(e) {
+      const pos = this._getPos(e);
+      this._ctx.beginPath();
+      this._ctx.moveTo(pos.x, pos.y);
+      // Hide hint
+      const hint = D("canvas-hint");
+      if (hint) hint.classList.add("hidden");
+      this._hasStrokes = true;
+    },
+
+    _continueStroke(e) {
+      const pos = this._getPos(e);
+      const ctx = this._ctx;
+      // Update stroke color based on current theme
+      const isLight =
+        document.documentElement.getAttribute("data-theme") === "light";
+      ctx.strokeStyle = isLight ? "#0077aa" : "#00d4ff";
+      ctx.lineWidth = this._penSize;
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+    },
+
+    clear() {
+      const c = this._canvas;
+      const ctx = this._ctx;
+      const dpr = window.devicePixelRatio || 1;
+      ctx.clearRect(0, 0, c.width / dpr, c.height / dpr);
+      ctx.beginPath();
+      this._hasStrokes = false;
+      this._lastResult = null;
+      const hint = D("canvas-hint");
+      if (hint) hint.classList.remove("hidden");
+      const res = D("canvas-result");
+      if (res) res.hidden = true;
+    },
+
+    setPenSize(size) {
+      this._penSize = parseInt(size) || 4;
+    },
+
+    /** Use Tesseract to OCR the canvas image */
+    async recognize() {
+      if (!this._hasStrokes) {
+        ui.toast("Dibuja una ecuación primero", "warn");
+        return;
+      }
+      ui.toast("Reconociendo escritura…", "info", 4000);
+      const btn = document.querySelector(".canvas-btn-recognize");
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "⏳ PROCESANDO…";
+      }
+
+      try {
+        // Get canvas image as blob
+        const dataURL = this._canvas.toDataURL("image/png");
+
+        // Try Tesseract first (math-optimized whitelist)
+        ensureTesseract(async () => {
+          try {
+            const worker = await Tesseract.createWorker("eng", 1, {
+              logger: () => {},
+            });
+            await worker.setParameters({
+              tessedit_char_whitelist:
+                "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+-*/^()[]{}=.,sincotalgqreSdp∫∂π",
+              preserve_interword_spaces: "1",
+            });
+            const result = await worker.recognize(dataURL);
+            await worker.terminate();
+            const raw = result.data.text.trim();
+            const cleaned = _cleanOCR(raw) || raw;
+            if (cleaned && cleaned.length > 0) {
+              this._showResult(cleaned);
+            } else {
+              ui.toast(
+                "No se detectó ecuación — intenta con trazos más gruesos",
+                "warn",
+              );
+            }
+          } catch (err) {
+            ui.toast("Error en reconocimiento: " + err.message, "error");
+          } finally {
+            if (btn) {
+              btn.disabled = false;
+              btn.textContent = "🔍 RECONOCER";
+            }
+          }
+        });
+      } catch (err) {
+        ui.toast("Error: " + err.message, "error");
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "🔍 RECONOCER";
+        }
+      }
+    },
+
+    _showResult(expr) {
+      this._lastResult = expr;
+      const res = D("canvas-result");
+      const exprEl = D("canvas-result-expr");
+      if (res && exprEl) {
+        exprEl.textContent = expr;
+        res.hidden = false;
+        if (gsap)
+          gsap.fromTo(
+            res,
+            { opacity: 0, y: 6 },
+            { opacity: 1, y: 0, duration: 0.3 },
+          );
+      }
+      ui.toast(`Detectado: ${expr}`, "success", 3000);
+    },
+
+    useResult() {
+      if (!this._lastResult) return;
+      calc.setExpr(this._lastResult);
+      calc.updatePreview();
+      ui.toast("Ecuación cargada desde canvas", "success");
+      setTimeout(() => calc.calculate(), 400);
+    },
+  };
+
+  /* ════════════════════════════════════════════════════
+   MÓDULO: derivative steps — Paso a paso con reglas
+   Extiende el módulo symbolic existente
+   ════════════════════════════════════════════════════ */
+  // Override/extend the existing derivative method with detailed rules
+  const _origDerivative = symbolic.derivative
+    ? symbolic.derivative.bind(symbolic)
+    : null;
+
+  symbolic.derivativeWithRules = function (f, variable, order) {
+    const v = variable || "x";
+    const stps = [];
+
+    stps.push({
+      label: "PLANTEAMIENTO",
+      content: "",
+      type: "step-deriv",
+      value: null,
+      opts: {
+        icon: "d/dx",
+        stepTitle:
+          order > 1 ? `Derivada de orden ${order}` : "Primera derivada",
+        stepExplanation: `Calcular d${order > 1 ? order : ""}/d${v}${order > 1 ? order : ""}[${f}]`,
+        stepExpr:
+          order > 1 ? `d^${order}/d${v}^${order}(${f})` : `d/d${v}[${f}]`,
+        numbered: false,
+      },
+    });
+
+    // Detect which rule applies and explain it
+    const rules = this._detectDerivRules(f, v);
+    rules.forEach((rule) => {
+      stps.push({
+        label: rule.label,
+        content: "",
+        type: "step-deriv",
+        value: null,
+        opts: {
+          icon: rule.icon,
+          stepTitle: rule.title,
+          stepExplanation: rule.explanation,
+          stepExpr: rule.expr || "",
+          numbered: false,
+        },
+      });
+    });
+
+    // Compute with Nerdamer
+    let result = null;
+    try {
+      let nerdExpr = f;
+      for (let i = 0; i < (order || 1); i++) {
+        nerdExpr = nerdamer(`diff(${nerdExpr}, ${v})`).toString();
+      }
+      result = this._cleanNerdResult(nerdExpr);
+
+      // Simplify if possible
+      let simplified = result;
+      try {
+        simplified = this._cleanNerdResult(
+          nerdamer(`simplify(${nerdExpr})`).toString(),
+        );
+      } catch (_) {}
+
+      stps.push({
+        label: "CÁLCULO",
+        content: "",
+        type: "step-deriv",
+        value: null,
+        opts: {
+          icon: "∂",
+          stepTitle: "Aplicar reglas de derivación",
+          stepExplanation: `Derivando ${f} respecto a ${v}`,
+          stepExpr: `d/d${v}[${f}] = ${result}`,
+          numbered: false,
+        },
+      });
+
+      if (simplified !== result) {
+        stps.push({
+          label: "SIMPLIFICACIÓN",
+          content: "",
+          type: "step-deriv",
+          value: simplified,
+          opts: {
+            icon: "✓",
+            stepTitle: "Simplificar resultado",
+            stepExpr: simplified,
+            stepResult: `<span class="result-box">${_esc(simplified)}</span>`,
+            numbered: false,
+          },
+        });
+        result = simplified;
+      } else {
+        stps.push({
+          label: "RESULTADO",
+          content: "",
+          type: "step-deriv",
+          value: result,
+          opts: {
+            icon: "=",
+            stepTitle: "Resultado final",
+            stepExpr: `d/d${v}[${f}] = ${result}`,
+            stepResult: `<span class="result-box">${_esc(result)}</span>`,
+            numbered: false,
+          },
+        });
+      }
+
+      // If higher order, show each step
+      if (order > 1) {
+        let prev = f;
+        for (let ord = 1; ord <= order; ord++) {
+          try {
+            const di = this._cleanNerdResult(
+              nerdamer(`diff(${prev}, ${v})`).toString(),
+            );
+            stps.push({
+              label: `DERIVADA ${ord}ª`,
+              content: "",
+              type: "step-deriv",
+              value: ord === order ? di : null,
+              opts: {
+                icon: `d${ord}`,
+                stepTitle: `Derivada de orden ${ord}`,
+                stepExpr: `d${ord > 1 ? ord : ""}/d${v}${ord > 1 ? ord : ""}[${ord === 1 ? f : prev}] = ${di}`,
+                stepResult:
+                  ord === order
+                    ? `<span class="result-box">${_esc(di)}</span>`
+                    : "",
+                numbered: false,
+              },
+            });
+            prev = di;
+          } catch (_) {}
+        }
+        result = prev;
+      }
+    } catch (err) {
+      stps.push({
+        label: "ERROR",
+        content: `⚠ ${_esc(err.message)}`,
+        type: "step-error",
+        value: null,
+      });
+    }
+
+    this._commitSteps(stps, result, "diff");
+    hist.save(
+      `diff(${f},${v}${order > 1 ? "," + order : ""})`,
+      result,
+      S.mode,
+      "nerdamer",
+    );
+  };
+
+  symbolic._detectDerivRules = function (f, v) {
+    const rules = [];
+    const fe = f.toLowerCase();
+
+    // Constant rule
+    if (/^-?[\d.]+$/.test(f.trim())) {
+      rules.push({
+        label: "REGLA DE CONSTANTE",
+        icon: "K",
+        title: "Derivada de una constante = 0",
+        explanation: "d/dx[c] = 0  (c constante)",
+        expr: `d/d${v}[${f}] = 0`,
+      });
+      return rules;
+    }
+
+    // Power rule: x^n
+    if (new RegExp(`^${v}\\^([\\d.]+)$`).test(f.trim())) {
+      const m = f.match(/\^([\d.]+)$/);
+      const n = m ? m[1] : "n";
+      rules.push({
+        label: "REGLA DE LA POTENCIA",
+        icon: "xⁿ",
+        title: `d/d${v}[${v}^n] = n·${v}^(n-1)`,
+        explanation: `Bajar el exponente y restar 1: d/d${v}[${v}^${n}] = ${n}·${v}^${parseFloat(n) - 1}`,
+        expr: `d/d${v}[${v}^${n}] = ${n}·${v}^(${n}-1)`,
+      });
+    }
+
+    // Sum/difference rule
+    if (/[+\-]/.test(f) && !/^\s*[+\-]/.test(f)) {
+      rules.push({
+        label: "REGLA DE SUMA/DIFERENCIA",
+        icon: "±",
+        title: "Derivada de una suma/diferencia",
+        explanation: "d/dx[f±g] = f'±g'  (linealidad)",
+        expr: "d/dx[f ± g] = f'(x) ± g'(x)",
+      });
+    }
+
+    // Product rule: contains * or implicit mult
+    if (/\*/.test(f) && !/\^/.test(f)) {
+      rules.push({
+        label: "REGLA DEL PRODUCTO",
+        icon: "×",
+        title: "Regla del producto: d/dx[f·g] = f'g + fg'",
+        explanation: "Si u·v, entonces d/dx[u·v] = u'·v + u·v'",
+        expr: "d/dx[u·v] = u'·v + u·v'",
+      });
+    }
+
+    // Quotient rule
+    if (/\//.test(f) && !/\*\*/.test(f)) {
+      rules.push({
+        label: "REGLA DEL COCIENTE",
+        icon: "f/g",
+        title: "Regla del cociente: d/dx[f/g] = (f'g−fg')/g²",
+        explanation: "d/dx[u/v] = (u'·v − u·v') / v²",
+        expr: "d/dx[u/v] = (u'v − uv') / v²",
+      });
+    }
+
+    // Chain rule: sin(g(x)), cos(g(x)), etc
+    if (/sin|cos|tan|log|exp|sqrt/.test(fe)) {
+      const fn = fe.match(/\b(sin|cos|tan|asin|acos|atan|log|exp|sqrt)\b/);
+      if (fn) {
+        const fname = fn[1];
+        const chainRules = {
+          sin: "cos(g(x))·g'(x)",
+          cos: "-sin(g(x))·g'(x)",
+          tan: "sec²(g(x))·g'(x)",
+          asin: "g'(x)/√(1−g(x)²)",
+          acos: "-g'(x)/√(1−g(x)²)",
+          atan: "g'(x)/(1+g(x)²)",
+          log: "g'(x)/g(x)",
+          exp: "eˢ(ˣ)·g'(x)",
+          sqrt: "g'(x)/(2·√g(x))",
+        };
+        rules.push({
+          label: "REGLA DE LA CADENA",
+          icon: "⛓",
+          title: `Regla de la cadena con ${fname}(g(x))`,
+          explanation: `d/dx[${fname}(g(x))] = ${chainRules[fname] || "f'(g(x))·g'(x)"}`,
+          expr: `d/dx[${fname}(g(x))] = ${chainRules[fname] || "f'(g)·g'(x)"}`,
+        });
+      }
+    }
+
+    if (rules.length === 0) {
+      rules.push({
+        label: "MÉTODO GENERAL",
+        icon: "∂",
+        title: "Derivación general (Nerdamer)",
+        explanation: "Aplicando reglas de derivación automáticamente",
+        expr: `d/d${v}[${f}]`,
+      });
+    }
+
+    return rules;
+  };
+
+  // Patch derivative dispatcher to use the enhanced version
+  const _origDispatch = symbolic.dispatchSymbolic.bind(symbolic);
+  symbolic.dispatchSymbolic = function (expr, typeLabel) {
+    const e = expr.trim();
+    if (/^diff\s*\(/i.test(e) || /^derivative\s*\(/i.test(e)) {
+      const args = this._parseArgs(e);
+      const order = parseInt(args[2]) || 1;
+      this.derivativeWithRules(args[0], args[1] || "x", order);
+      return;
+    }
+    _origDispatch(expr, typeLabel);
+  };
+
+  /* ════════════════════════════════════════════════════
+   MÓDULO: switchMode — extend to support 'editor'
+   ════════════════════════════════════════════════════ */
+  const _origSwitchMode = calc.switchMode.bind(calc);
+  calc.switchMode = function (mode) {
+    if (mode === S.mode) return;
+    S.mode = mode;
+    document.querySelectorAll(".mode-tab").forEach((t) => {
+      const a = t.dataset.mode === mode;
+      t.classList.toggle("active", a);
+      t.setAttribute("aria-selected", a);
+    });
+    const panels = ["basic", "symbolic", "algebra", "stats", "editor"];
+    panels.forEach((m) => {
+      const el = D("fn-" + m);
+      if (!el) return;
+      if (m === mode) {
+        el.style.display = "";
+        if (gsap) {
+          gsap.fromTo(
+            el,
+            { opacity: 0, y: 10, filter: "blur(3px)" },
+            {
+              opacity: 1,
+              y: 0,
+              filter: "blur(0)",
+              duration: 0.32,
+              ease: "power3.out",
+            },
+          );
+          gsap.fromTo(
+            el.querySelectorAll(".key"),
+            { opacity: 0, scale: 0.88 },
+            {
+              opacity: 1,
+              scale: 1,
+              duration: 0.2,
+              stagger: 0.016,
+              ease: "power2.out",
+            },
+          );
+        }
+      } else {
+        if (el.style.display !== "none") {
+          if (gsap)
+            gsap.to(el, {
+              opacity: 0,
+              y: -6,
+              duration: 0.15,
+              ease: "power2.in",
+              onComplete: () => {
+                el.style.display = "none";
+              },
+            });
+          else el.style.display = "none";
+        }
+      }
+    });
+    if (mode === "symbolic" && !S.nerdReady) {
+      ui.toast("Cargando motor simbólico Nerdamer…", "info", 4000);
+      ensureNerdamer(() => {
+        S.nerdReady = true;
+        ui.toast("Nerdamer listo", "success");
+      });
+    }
+  };
+
+  /* ════════════════════════════════════════════════════
+   PATCH steps._card to add copy button
+   ════════════════════════════════════════════════════ */
+  const _origCard = steps._card.bind(steps);
+  steps._card = function (label, html, type, value) {
+    const el = _origCard(label, html, type, value);
+    if (el && typeof el === "object" && el.classList) {
+      // Add position relative for copy button
+      el.style.position = "relative";
+      const copyBtn = document.createElement("button");
+      copyBtn.className = "step-copy-btn";
+      copyBtn.textContent = "⎘";
+      copyBtn.title = "Copiar este paso";
+      copyBtn.onclick = (e) => {
+        e.stopPropagation();
+        const text = (label || "") + ": " + (el.textContent || "").trim();
+        clipboard.copyStepCard(text);
+      };
+      el.appendChild(copyBtn);
+    }
+    return el;
+  };
+
+  /* ════════════════════════════════════════════════════
    INICIALIZACIÓN
    ════════════════════════════════════════════════════ */
   function init() {
@@ -3993,7 +4848,9 @@ window.QC = (() => {
     if (d) d.textContent = "";
     calc.updatePreview();
     ui.init();
+    ui._initTheme();
     ocr.initDragDrop();
+    handwriting.init();
 
     D("input-display")?.addEventListener("input", () => {
       calc.updatePreview();
@@ -4018,11 +4875,16 @@ window.QC = (() => {
         e.preventDefault();
         hist.toggle();
       }
+      // Ctrl+Shift+C = copy steps
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "C") {
+        e.preventDefault();
+        clipboard.copySteps();
+      }
     });
 
     hist.render();
     hist._badge();
-    ui.toast("QuantumCalc v3.0 — Nerdamer + Math.js cargando…", "info", 3000);
+    ui.toast("QuantumCalc v4.0 — Nerdamer + Math.js cargando…", "info", 3000);
   }
 
   if (document.readyState === "loading")
@@ -4038,6 +4900,9 @@ window.QC = (() => {
     ocr,
     history: hist,
     export: _export,
+    clipboard,
+    editor,
+    handwriting,
     toast: (m, t) => ui.toast(m, t),
     state: S,
   };
