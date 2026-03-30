@@ -4907,3 +4907,1229 @@ window.QC = (() => {
     state: S,
   };
 })();
+
+/* ═══════════════════════════════════════════════════════════════════
+   NUEVOS MÓDULOS — QuantumCalc v5.0
+   Complejos · Voz · Regresión · Práctica · QR · Export Pro
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────────
+   MÓDULO: NÚMEROS COMPLEJOS
+   ───────────────────────────────────────────────────────────────── */
+(function () {
+  const _D = (id) => document.getElementById(id);
+
+  window.QC_complex = {
+    /** Evalúa expresión compleja con math.js y muestra pasos */
+    compute(expr) {
+      if (!window.math) {
+        QC.ui.toast("Math.js no listo", "warn");
+        return;
+      }
+      if (!expr) {
+        QC.ui.toast("Escribe una expresión compleja", "warn");
+        return;
+      }
+      try {
+        const result = math.evaluate(expr);
+        const stps = [];
+        stps.push({
+          label: "EXPRESIÓN COMPLEJA",
+          content: `<code>${expr}</code> <span class="engine-badge engine-mathjs">MATH.JS</span>`,
+          type: "step-integral",
+          value: null,
+        });
+
+        let re, im, mod, arg, polar;
+        if (typeof result === "object" && result.re !== undefined) {
+          re = result.re;
+          im = result.im;
+          mod = Math.sqrt(re * re + im * im);
+          arg = Math.atan2(im, re);
+          const argDeg = ((arg * 180) / Math.PI).toFixed(4);
+          polar = `${mod.toFixed(6)} · e^(i·${arg.toFixed(6)})`;
+
+          stps.push({
+            label: "FORMA RECTANGULAR",
+            content: `Re = <span class="math-val">${re.toFixed(8)}</span><br>Im = <span class="math-val">${im.toFixed(8)}</span><br>Resultado: <span class="result-box">${re.toFixed(4)} ${im >= 0 ? "+" : "-"} ${Math.abs(im).toFixed(4)}i</span>`,
+            type: "",
+            value: null,
+          });
+          stps.push({
+            label: "MÓDULO Y ARGUMENTO",
+            content: `|z| = √(${re.toFixed(4)}² + ${im.toFixed(4)}²) = <span class="math-val">${mod.toFixed(8)}</span><br>arg(z) = arctan(${im.toFixed(4)}/${re.toFixed(4)}) = <span class="math-val">${arg.toFixed(6)} rad = ${argDeg}°</span>`,
+            type: "step-info",
+            value: null,
+          });
+          stps.push({
+            label: "FORMA POLAR",
+            content: `z = r·e^(iθ) = <span class="result-box">${polar}</span><br>= ${mod.toFixed(4)}·(cos(${argDeg}°) + i·sin(${argDeg}°))`,
+            type: "step-result",
+            value: `${re.toFixed(4)} + ${im.toFixed(4)}i`,
+          });
+        } else {
+          const val = typeof result === "number" ? result : result.toString();
+          stps.push({
+            label: "RESULTADO",
+            content: `<span class="result-box">${val}</span>`,
+            type: "step-result",
+            value: String(val),
+          });
+        }
+
+        QC.steps.clear(true);
+        _D("steps-empty").style.display = "none";
+        QC.steps.animate(stps);
+        _D("steps-count").textContent = stps.length + " PASOS";
+
+        const resVal = stps.find((s) => s.value)?.value;
+        if (resVal) {
+          const r = _D("result-display");
+          if (r) r.textContent = "= " + resVal;
+          QC.history.save(expr, resVal, "complex", "math.js");
+        }
+        QC.ui.toast("Número complejo calculado ✓", "success", 2000);
+      } catch (err) {
+        QC.ui.toast("Error: " + err.message, "error");
+      }
+    },
+
+    polar() {
+      this.compute("abs(" + QC.calc.getExpr() + ")");
+    },
+    argument() {
+      this.compute("arg(" + QC.calc.getExpr() + ")");
+    },
+    conjugate() {
+      this.compute("conj(" + QC.calc.getExpr() + ")");
+    },
+    magnitude() {
+      const e = QC.calc.getExpr();
+      QC.calc.setExpr("abs(" + e + ")");
+      QC.calc.calculate();
+    },
+  };
+})();
+
+/* ─────────────────────────────────────────────────────────────────
+   MÓDULO: ASISTENTE POR VOZ
+   ───────────────────────────────────────────────────────────────── */
+(function () {
+  const _D = (id) => document.getElementById(id);
+  let recognition = null;
+  let isListening = false;
+
+  window.QC_voice = {
+    supported: !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+
+    init() {
+      if (!this.supported) return;
+      const SRClass =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SRClass();
+      recognition.lang = "es-ES";
+      recognition.continuous = false;
+      recognition.interimResults = true;
+
+      recognition.onstart = () => {
+        isListening = true;
+        this._updateBtn(true);
+        QC.ui.toast("🎙 Escuchando… dicta tu ecuación", "info", 5000);
+      };
+
+      recognition.onresult = (event) => {
+        let interim = "",
+          final = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const t = event.results[i][0].transcript;
+          if (event.results[i].isFinal) final += t;
+          else interim += t;
+        }
+        const text = (final || interim).toLowerCase().trim();
+        if (text) this._processVoice(text, !!final);
+      };
+
+      recognition.onend = () => {
+        isListening = false;
+        this._updateBtn(false);
+      };
+
+      recognition.onerror = (e) => {
+        isListening = false;
+        this._updateBtn(false);
+        if (e.error !== "no-speech")
+          QC.ui.toast("Error de voz: " + e.error, "error");
+      };
+    },
+
+    toggle() {
+      if (!this.supported) {
+        QC.ui.toast("Web Speech API no disponible en este navegador", "warn");
+        return;
+      }
+      if (!recognition) this.init();
+      if (isListening) {
+        recognition.stop();
+        return;
+      }
+      try {
+        recognition.start();
+      } catch (e) {
+        QC.ui.toast("Error al iniciar micrófono: " + e.message, "error");
+      }
+    },
+
+    _updateBtn(listening) {
+      const btn = _D("voice-btn");
+      if (!btn) return;
+      btn.classList.toggle("voice-active", listening);
+      btn.setAttribute("aria-pressed", listening);
+      btn.title = listening ? "Detener dictado" : "Dictado por voz";
+      btn.querySelector(".hdr-btn-icon").textContent = listening ? "🔴" : "🎙";
+    },
+
+    _processVoice(text, isFinal) {
+      // Comandos de acción
+      const commands = {
+        resolver: () => QC.calc.calculate(),
+        calcular: () => QC.calc.calculate(),
+        graficar: () => {
+          const e = QC.calc.getExpr();
+          if (e) {
+            _D("graph-expr").value = e;
+            QC.graph.plot2D();
+          }
+        },
+        "mostrar pasos": () => QC.calc.calculate(),
+        limpiar: () => QC.calc.clearAll(),
+        borrar: () => QC.calc.clearAll(),
+        historial: () => QC.history.toggle(),
+        "exportar pdf": () => QC.export.toPDF(),
+      };
+
+      for (const [cmd, action] of Object.entries(commands)) {
+        if (text.includes(cmd)) {
+          if (isFinal) {
+            action();
+            QC.ui.toast(`Comando: "${cmd}"`, "success", 2000);
+          }
+          return;
+        }
+      }
+
+      if (!isFinal) return; // Solo procesar expresiones al finalizar
+
+      // Convertir dictado a expresión matemática
+      let expr = text
+        .replace(/\bmas\b|\bmás\b/g, "+")
+        .replace(/\bmenos\b/g, "-")
+        .replace(/\bpor\b|\btimes\b/g, "*")
+        .replace(/\bentre\b|\bdividido entre\b|\bdividido por\b/g, "/")
+        .replace(/\bpotencia\b|\belevar\b|\bal cuadrado\b/g, "^2")
+        .replace(/\bpi\b|\bpí\b/g, "pi")
+        .replace(/\bseno\b/g, "sin(")
+        .replace(/\bcoseno\b/g, "cos(")
+        .replace(/\btangente\b/g, "tan(")
+        .replace(/\braiz\b|\braíz\b/g, "sqrt(")
+        .replace(/\bintegral\b/g, "integrate(")
+        .replace(/\bderivada\b/g, "diff(")
+        .replace(/\b([0-9]+)\b/g, "$1")
+        .replace(/\belevado a\b/g, "^")
+        .replace(/\bcuadrado\b/g, "^2")
+        .replace(/\bcubo\b/g, "^3")
+        .replace(/\s+/g, "");
+
+      if (expr.length > 1) {
+        QC.calc.setExpr(expr);
+        QC.calc.updatePreview();
+        QC.ui.toast("Dictado: " + expr, "info", 2500);
+      }
+    },
+  };
+
+  // Inicializar cuando el DOM esté listo
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => QC_voice.init());
+  } else {
+    setTimeout(() => QC_voice.init(), 500);
+  }
+})();
+
+/* ─────────────────────────────────────────────────────────────────
+   MÓDULO: REGRESIÓN ESTADÍSTICA
+   ───────────────────────────────────────────────────────────────── */
+(function () {
+  const _D = (id) => document.getElementById(id);
+
+  window.QC_regression = {
+    /** Parsea datos desde el display o modal */
+    _parseData(raw) {
+      // Acepta: [[x1,y1],[x2,y2],...] o "x1,y1\nx2,y2\n..." o "x1 y1\n..."
+      raw = raw.trim();
+      let points = [];
+      try {
+        // Intentar JSON array
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          if (Array.isArray(arr[0])) {
+            points = arr.map((p) => ({ x: +p[0], y: +p[1] }));
+          } else {
+            // Array plano de y-values
+            points = arr.map((y, i) => ({ x: i + 1, y: +y }));
+          }
+        }
+      } catch (_) {
+        // Intentar CSV / espacio
+        const lines = raw.split(/[\n;]+/).filter((l) => l.trim());
+        points = lines
+          .map((l) => {
+            const parts = l.trim().split(/[\s,]+/);
+            return { x: +parts[0], y: +parts[1] };
+          })
+          .filter((p) => !isNaN(p.x) && !isNaN(p.y));
+      }
+      return points;
+    },
+
+    /** Regresión lineal y = a + b*x */
+    linear(points) {
+      const n = points.length;
+      const sumX = points.reduce((s, p) => s + p.x, 0);
+      const sumY = points.reduce((s, p) => s + p.y, 0);
+      const sumXY = points.reduce((s, p) => s + p.x * p.y, 0);
+      const sumX2 = points.reduce((s, p) => s + p.x * p.x, 0);
+      const b = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+      const a = (sumY - b * sumX) / n;
+      const yMean = sumY / n;
+      const ssTot = points.reduce((s, p) => s + (p.y - yMean) ** 2, 0);
+      const ssRes = points.reduce((s, p) => s + (p.y - (a + b * p.x)) ** 2, 0);
+      const r2 = 1 - ssRes / ssTot;
+      return {
+        a,
+        b,
+        r2,
+        type: "linear",
+        fn: (x) => a + b * x,
+        label: `y = ${a.toFixed(4)} + ${b.toFixed(4)}x`,
+        r2,
+      };
+    },
+
+    /** Regresión polinomial grado 2 */
+    polynomial2(points) {
+      const n = points.length;
+      // Sistema normal para y = a + bx + cx²
+      const s = (fn) => points.reduce((acc, p) => acc + fn(p), 0);
+      const sx = s((p) => p.x),
+        sx2 = s((p) => p.x ** 2),
+        sx3 = s((p) => p.x ** 3),
+        sx4 = s((p) => p.x ** 4);
+      const sy = s((p) => p.y),
+        sxy = s((p) => p.x * p.y),
+        sx2y = s((p) => p.x ** 2 * p.y);
+      // Solve 3x3 via Gaussian elimination
+      const A = [
+        [n, sx, sx2, sy],
+        [sx, sx2, sx3, sxy],
+        [sx2, sx3, sx4, sx2y],
+      ];
+      for (let i = 0; i < 3; i++) {
+        const piv = A[i][i];
+        for (let j = i; j < 4; j++) A[i][j] /= piv;
+        for (let k = 0; k < 3; k++)
+          if (k !== i) {
+            const f = A[k][i];
+            for (let j = i; j < 4; j++) A[k][j] -= f * A[i][j];
+          }
+      }
+      const a = A[0][3],
+        b = A[1][3],
+        c = A[2][3];
+      const yMean = sy / n;
+      const ssTot = points.reduce((s, p) => s + (p.y - yMean) ** 2, 0);
+      const ssRes = points.reduce(
+        (s, p) => s + (p.y - (a + b * p.x + c * p.x ** 2)) ** 2,
+        0,
+      );
+      const r2 = 1 - ssRes / ssTot;
+      return {
+        a,
+        b,
+        c,
+        r2,
+        type: "poly2",
+        fn: (x) => a + b * x + c * x ** 2,
+        label: `y = ${a.toFixed(3)} + ${b.toFixed(3)}x + ${c.toFixed(3)}x²`,
+      };
+    },
+
+    /** Regresión exponencial y = a * e^(bx) */
+    exponential(points) {
+      // Linealizar: ln(y) = ln(a) + bx
+      const valid = points.filter((p) => p.y > 0);
+      if (valid.length < 2) return null;
+      const logPoints = valid.map((p) => ({ x: p.x, y: Math.log(p.y) }));
+      const lin = this.linear(logPoints);
+      const a = Math.exp(lin.a),
+        b = lin.b;
+      const yMean = valid.reduce((s, p) => s + p.y, 0) / valid.length;
+      const ssTot = valid.reduce((s, p) => s + (p.y - yMean) ** 2, 0);
+      const ssRes = valid.reduce(
+        (s, p) => s + (p.y - a * Math.exp(b * p.x)) ** 2,
+        0,
+      );
+      const r2 = 1 - ssRes / ssTot;
+      return {
+        a,
+        b,
+        r2,
+        type: "exp",
+        fn: (x) => a * Math.exp(b * x),
+        label: `y = ${a.toFixed(4)} · e^(${b.toFixed(4)}x)`,
+      };
+    },
+
+    run(type) {
+      // Mostrar modal para ingresar datos
+      this._showModal(type);
+    },
+
+    _showModal(type) {
+      const overlay = document.createElement("div");
+      overlay.className = "sym-modal-overlay";
+      overlay.id = "reg-modal";
+      const names = {
+        linear: "Lineal",
+        poly2: "Polinomial (grado 2)",
+        exp: "Exponencial",
+      };
+      overlay.innerHTML = `
+        <div class="sym-modal reg-modal-box">
+          <div class="sym-modal-title">📊 REGRESIÓN ${(names[type] || type).toUpperCase()}</div>
+          <p class="sym-modal-label">Ingresa los puntos de datos:</p>
+          <p style="font-size:.75rem;color:var(--text-dim);margin-bottom:8px">Formato: [[x1,y1],[x2,y2],...] o x,y por línea</p>
+          <textarea id="reg-data-input" class="sym-modal-input reg-textarea" placeholder="[[1,2],[2,4],[3,5],[4,4],[5,6]]" rows="4">[[1,2.1],[2,3.9],[3,6.2],[4,7.8],[5,10.1],[6,12.0]]</textarea>
+          <div class="sym-modal-actions">
+            <button class="sym-modal-btn sym-modal-btn-cancel" onclick="document.getElementById('reg-modal').remove()">Cancelar</button>
+            <button class="sym-modal-btn" onclick="QC_regression._compute('${type}')">Calcular ▶</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      if (window.gsap)
+        gsap.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.22 });
+      setTimeout(() => document.getElementById("reg-data-input")?.focus(), 100);
+    },
+
+    _compute(type) {
+      const raw = document.getElementById("reg-data-input")?.value || "";
+      const points = this._parseData(raw);
+      if (points.length < 3) {
+        QC.ui.toast("Se necesitan al menos 3 puntos", "warn");
+        return;
+      }
+      document.getElementById("reg-modal")?.remove();
+
+      let model;
+      if (type === "linear") model = this.linear(points);
+      else if (type === "poly2") model = this.polynomial2(points);
+      else if (type === "exp") {
+        model = this.exponential(points);
+        if (!model) {
+          QC.ui.toast("Exponencial requiere y > 0", "warn");
+          return;
+        }
+      }
+
+      // Pasos
+      const stps = [];
+      stps.push({
+        label: "DATOS DE ENTRADA",
+        content: `n = <span class="math-val">${points.length}</span> puntos<br>X: [${points.map((p) => p.x).join(", ")}]<br>Y: [${points.map((p) => p.y).join(", ")}]`,
+        type: "step-info",
+        value: null,
+      });
+      stps.push({
+        label: "MODELO",
+        content: `Tipo: <span class="highlight">${type === "linear" ? "Lineal" : type === "poly2" ? "Polinomial grado 2" : "Exponencial"}</span><br>Ecuación: <code>${model.label}</code>`,
+        type: "",
+        value: null,
+      });
+      stps.push({
+        label: "COEFICIENTE R²",
+        content: `R² = <span class="result-box">${model.r2.toFixed(6)}</span><br>${model.r2 > 0.95 ? '✓ Ajuste <span class="highlight">excelente</span>' : model.r2 > 0.8 ? '✓ Ajuste <span class="highlight">bueno</span>' : '⚠ Ajuste <span class="highlight">moderado</span>'}`,
+        type: "step-result",
+        value: model.label,
+      });
+
+      QC.steps.clear(true);
+      document.getElementById("steps-empty").style.display = "none";
+      QC.steps.animate(stps);
+      document.getElementById("steps-count").textContent =
+        stps.length + " PASOS";
+
+      // Graficar
+      this._plotRegression(points, model);
+      QC.history.save(
+        `Regresión ${type}`,
+        model.label + ` R²=${model.r2.toFixed(4)}`,
+        "stats",
+        "math.js",
+      );
+      QC.ui.toast(
+        `Regresión calculada — R² = ${model.r2.toFixed(4)}`,
+        "success",
+      );
+    },
+
+    _plotRegression(points, model) {
+      ensurePlotly(() => {
+        const xMin = Math.min(...points.map((p) => p.x));
+        const xMax = Math.max(...points.map((p) => p.x));
+        const xRange = xMax - xMin;
+        const xs = Array.from(
+          { length: 100 },
+          (_, i) => xMin - xRange * 0.1 + (i * (xRange * 1.2)) / 99,
+        );
+        const ys = xs.map((x) => model.fn(x));
+
+        const scatter = {
+          x: points.map((p) => p.x),
+          y: points.map((p) => p.y),
+          mode: "markers",
+          type: "scatter",
+          name: "Datos",
+          marker: {
+            color: "#00ff88",
+            size: 10,
+            symbol: "circle",
+            line: { color: "#00d4ff", width: 1.5 },
+          },
+        };
+        const line = {
+          x: xs,
+          y: ys,
+          mode: "lines",
+          type: "scatter",
+          name: model.label,
+          line: { color: "#00d4ff", width: 2.5, dash: "solid" },
+        };
+
+        const container = document.getElementById("graph-container");
+        const ph = document.getElementById("graph-placeholder");
+        if (ph) ph.style.display = "none";
+
+        Plotly.newPlot(
+          container,
+          [scatter, line],
+          {
+            paper_bgcolor: "transparent",
+            plot_bgcolor: "rgba(0,8,16,.6)",
+            margin: { l: 46, r: 16, t: 50, b: 46 },
+            title: {
+              text: `Regresión — R² = ${model.r2.toFixed(4)}`,
+              font: { color: "#00d4ff", family: "Orbitron" },
+            },
+            xaxis: {
+              color: "#4a90b0",
+              gridcolor: "rgba(0,212,255,.12)",
+              title: "x",
+            },
+            yaxis: {
+              color: "#4a90b0",
+              gridcolor: "rgba(0,212,255,.12)",
+              title: "y",
+            },
+            legend: {
+              font: { color: "#b0cfe0" },
+              bgcolor: "rgba(5,10,15,.6)",
+              bordercolor: "rgba(0,212,255,.3)",
+              borderwidth: 1,
+            },
+          },
+          { responsive: true, displayModeBar: false },
+        );
+      });
+    },
+  };
+})();
+
+/* ─────────────────────────────────────────────────────────────────
+   MÓDULO: MODO PRÁCTICA
+   ───────────────────────────────────────────────────────────────── */
+(function () {
+  const _D = (id) => document.getElementById(id);
+  let currentExercise = null;
+
+  const exercises = {
+    algebra: [
+      { q: "2x + 5 = 13", a: "x = 4", hint: "Despeja x: 2x = 13-5 = 8" },
+      { q: "3x - 7 = 14", a: "x = 7", hint: "3x = 21, x = 7" },
+      {
+        q: "x² - 5x + 6 = 0",
+        a: "x = 2 o x = 3",
+        hint: "Factoriza: (x-2)(x-3) = 0",
+      },
+      { q: "5x + 3 = 2x + 12", a: "x = 3", hint: "3x = 9, x = 3" },
+      { q: "x² - 4 = 0", a: "x = 2 o x = -2", hint: "Diferencia de cuadrados" },
+      {
+        q: "2x² + x - 3 = 0",
+        a: "x = 1 o x = -3/2",
+        hint: "Usa la fórmula cuadrática o factoriza",
+      },
+      { q: "log(x) = 2", a: "x = 100", hint: "Convierte: 10² = x" },
+      { q: "√(x+4) = 5", a: "x = 21", hint: "Eleva al cuadrado: x+4 = 25" },
+    ],
+    derivadas: [
+      { q: "d/dx [x³ - 2x]", a: "3x² - 2", hint: "Regla de la potencia" },
+      { q: "d/dx [sin(x)]", a: "cos(x)", hint: "Derivada del seno" },
+      { q: "d/dx [eˣ]", a: "eˣ", hint: "La exponencial se deriva a sí misma" },
+      {
+        q: "d/dx [x²·cos(x)]",
+        a: "2x·cos(x) - x²·sin(x)",
+        hint: "Regla del producto: (uv)'=u'v+uv'",
+      },
+      { q: "d/dx [ln(x)]", a: "1/x", hint: "Derivada del logaritmo natural" },
+      {
+        q: "d/dx [x⁵ + 3x³ - 7x]",
+        a: "5x⁴ + 9x² - 7",
+        hint: "Regla de la potencia término a término",
+      },
+      {
+        q: "d/dx [tan(x)]",
+        a: "sec²(x)",
+        hint: "O equivalentemente 1/cos²(x)",
+      },
+      {
+        q: "d/dx [x·eˣ]",
+        a: "eˣ + x·eˣ = eˣ(1+x)",
+        hint: "Regla del producto",
+      },
+    ],
+    integrales: [
+      {
+        q: "∫ 2x dx",
+        a: "x² + C",
+        hint: "Regla de potencia: ∫xⁿ = xⁿ⁺¹/(n+1)",
+      },
+      {
+        q: "∫ cos(x) dx",
+        a: "sin(x) + C",
+        hint: "Integral directa del coseno",
+      },
+      {
+        q: "∫ eˣ dx",
+        a: "eˣ + C",
+        hint: "La exponencial se integra a sí misma",
+      },
+      {
+        q: "∫ 1/x dx",
+        a: "ln|x| + C",
+        hint: "Caso especial de la regla de potencia",
+      },
+      { q: "∫ x² dx", a: "x³/3 + C", hint: "Regla: ∫x² = x³/3" },
+      { q: "∫ sin(x) dx", a: "-cos(x) + C", hint: "Integral directa del seno" },
+      {
+        q: "∫ 3x² - 2x dx",
+        a: "x³ - x² + C",
+        hint: "Integra término a término",
+      },
+      { q: "∫₀¹ x dx", a: "1/2 = 0.5", hint: "Integral definida: [x²/2]₀¹" },
+    ],
+  };
+
+  window.QC_practice = {
+    generate(category) {
+      const list = exercises[category];
+      if (!list) return;
+      const idx = Math.floor(Math.random() * list.length);
+      currentExercise = { ...list[idx], category };
+      this._showExercise(currentExercise);
+    },
+
+    _showExercise(ex) {
+      // Remove existing modal
+      document.getElementById("practice-modal")?.remove();
+      const overlay = document.createElement("div");
+      overlay.className = "sym-modal-overlay";
+      overlay.id = "practice-modal";
+      overlay.innerHTML = `
+        <div class="sym-modal practice-box">
+          <div class="practice-category-badge">${ex.category.toUpperCase()}</div>
+          <div class="sym-modal-title">🎯 EJERCICIO DE PRÁCTICA</div>
+          <div class="practice-question">${ex.q}</div>
+          <p class="sym-modal-label">Tu respuesta:</p>
+          <input id="practice-answer" class="sym-modal-input" placeholder="Escribe tu respuesta aquí" autocomplete="off"/>
+          <div id="practice-feedback" class="practice-feedback" hidden></div>
+          <div class="sym-modal-actions">
+            <button class="sym-modal-btn sym-modal-btn-cancel" onclick="document.getElementById('practice-modal').remove()">Salir</button>
+            <button class="sym-modal-btn practice-hint-btn" onclick="QC_practice.showHint()">💡 Pista</button>
+            <button class="sym-modal-btn" onclick="QC_practice.verify()">Verificar ▶</button>
+          </div>
+          <div class="practice-new-wrap">
+            <button class="practice-new-btn" onclick="QC_practice.generate('${ex.category}')">↺ Nuevo ejercicio</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      if (window.gsap)
+        gsap.fromTo(
+          overlay,
+          { opacity: 0, y: 20 },
+          { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" },
+        );
+      setTimeout(
+        () => document.getElementById("practice-answer")?.focus(),
+        100,
+      );
+      document
+        .getElementById("practice-answer")
+        ?.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") this.verify();
+        });
+    },
+
+    verify() {
+      if (!currentExercise) return;
+      const input = document.getElementById("practice-answer");
+      const fb = document.getElementById("practice-feedback");
+      if (!input || !fb) return;
+      const answer = input.value.trim().toLowerCase().replace(/\s+/g, "");
+      const correct = currentExercise.a.toLowerCase().replace(/\s+/g, "");
+
+      // Comparación flexible
+      const isCorrect =
+        answer === correct ||
+        answer.replace(/[^0-9a-z+=\-*/]/g, "") ===
+          correct.replace(/[^0-9a-z+=\-*/]/g, "") ||
+        (correct.includes("o") &&
+          correct
+            .split("o")
+            .some((p) => answer.includes(p.trim().replace(/\s+/g, ""))));
+
+      fb.hidden = false;
+      if (isCorrect) {
+        fb.className = "practice-feedback practice-correct";
+        fb.innerHTML = `<span>✓</span> ¡Correcto! ${currentExercise.a}`;
+        if (window.gsap) {
+          gsap.fromTo(
+            fb,
+            { scale: 0.8, opacity: 0 },
+            {
+              scale: 1,
+              opacity: 1,
+              duration: 0.4,
+              ease: "elastic.out(1.2,.6)",
+            },
+          );
+          gsap.to(".practice-question", { color: "#00ff88", duration: 0.3 });
+        }
+        QC.ui.toast("¡Respuesta correcta! 🎉", "success");
+      } else {
+        fb.className = "practice-feedback practice-wrong";
+        fb.innerHTML = `<span>✗</span> Incorrecto. La respuesta es: <strong>${currentExercise.a}</strong>`;
+        if (window.gsap) {
+          gsap.fromTo(
+            document.getElementById("practice-answer"),
+            { x: -8 },
+            { x: 0, duration: 0.4, ease: "elastic.out(3,.4)" },
+          );
+          gsap.fromTo(
+            fb,
+            { opacity: 0, x: -10 },
+            { opacity: 1, x: 0, duration: 0.3 },
+          );
+        }
+        QC.ui.toast("Intenta de nuevo 💪", "warn", 2000);
+      }
+    },
+
+    showHint() {
+      if (!currentExercise) return;
+      const fb = document.getElementById("practice-feedback");
+      if (!fb) return;
+      fb.hidden = false;
+      fb.className = "practice-feedback practice-hint";
+      fb.innerHTML = `💡 Pista: ${currentExercise.hint}`;
+      if (window.gsap)
+        gsap.fromTo(
+          fb,
+          { opacity: 0, y: 4 },
+          { opacity: 1, y: 0, duration: 0.3 },
+        );
+    },
+  };
+})();
+
+/* ─────────────────────────────────────────────────────────────────
+   MÓDULO: CÓDIGO QR
+   ───────────────────────────────────────────────────────────────── */
+(function () {
+  const _D = (id) => document.getElementById(id);
+
+  window.QC_qr = {
+    generate(content) {
+      if (!content) content = QC.calc.getExpr();
+      if (!content) {
+        // Try from steps
+        const steps = document.getElementById("steps-container");
+        content = steps?.textContent?.trim()?.slice(0, 200) || "QuantumCalc";
+      }
+      this._showQRModal(content);
+    },
+
+    generateResult() {
+      const res = _D("result-display")?.textContent?.replace("= ", "") || "";
+      const expr = QC.calc.getExpr();
+      const content = expr ? `${expr} = ${res}` : res || "QuantumCalc v5.0";
+      this._showQRModal(content);
+    },
+
+    _showQRModal(content) {
+      document.getElementById("qr-modal")?.remove();
+      const overlay = document.createElement("div");
+      overlay.className = "sym-modal-overlay";
+      overlay.id = "qr-modal";
+      overlay.innerHTML = `
+        <div class="sym-modal qr-box">
+          <div class="sym-modal-title">📱 CÓDIGO QR</div>
+          <div class="qr-content-preview">${content.slice(0, 80)}${content.length > 80 ? "…" : ""}</div>
+          <div id="qr-canvas-wrap" class="qr-canvas-wrap">
+            <div class="qr-loading">Generando QR…</div>
+          </div>
+          <div class="qr-actions">
+            <button class="sym-modal-btn" onclick="QC_qr._download()">⬇ Descargar PNG</button>
+            <button class="sym-modal-btn sym-modal-btn-cancel" onclick="document.getElementById('qr-modal').remove()">Cerrar</button>
+          </div>
+          <p class="qr-hint">Escanea con tu cámara para compartir el resultado</p>
+        </div>`;
+      document.body.appendChild(overlay);
+      if (window.gsap)
+        gsap.fromTo(
+          overlay,
+          { opacity: 0, scale: 0.9 },
+          { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(1.4)" },
+        );
+
+      ensureQRCode(() => {
+        const wrap = document.getElementById("qr-canvas-wrap");
+        if (!wrap) return;
+        wrap.innerHTML = "";
+        try {
+          new QRCode(wrap, {
+            text: content,
+            width: 200,
+            height: 200,
+            colorDark: "#00d4ff",
+            colorLight: "#050a0f",
+            correctLevel: QRCode.CorrectLevel.M,
+          });
+          wrap.style.display = "flex";
+          wrap.style.justifyContent = "center";
+          if (window.gsap)
+            gsap.fromTo(
+              wrap,
+              { scale: 0.6, opacity: 0 },
+              {
+                scale: 1,
+                opacity: 1,
+                duration: 0.5,
+                ease: "elastic.out(1,.6)",
+              },
+            );
+        } catch (e) {
+          wrap.innerHTML = `<p style="color:var(--accent-red)">Error generando QR: ${e.message}</p>`;
+        }
+      });
+    },
+
+    _download() {
+      const img =
+        document.querySelector("#qr-canvas-wrap img") ||
+        document.querySelector("#qr-canvas-wrap canvas");
+      if (!img) {
+        QC.ui.toast("QR aún no generado", "warn");
+        return;
+      }
+      const a = document.createElement("a");
+      if (img.tagName === "CANVAS") {
+        a.href = img.toDataURL("image/png");
+      } else {
+        a.href = img.src;
+      }
+      a.download = "quantumcalc-qr.png";
+      a.click();
+      QC.ui.toast("QR descargado ✓", "success", 2000);
+    },
+  };
+})();
+
+/* ─────────────────────────────────────────────────────────────────
+   MEJORAS DE EXPORTACIÓN PDF/EXCEL (PATCH sobre _export existente)
+   ───────────────────────────────────────────────────────────────── */
+(function () {
+  const _D = (id) => document.getElementById(id);
+
+  // Override toPDF with a professional version
+  QC.export.toPDF = function () {
+    ensureJsPDF(() => {
+      const spinner = this._spinner("Generando PDF profesional…");
+      if (window.gsap) {
+        gsap.to(".hdr-btn-pdf", {
+          scale: 0.9,
+          duration: 0.1,
+          yoyo: true,
+          repeat: 3,
+        });
+      }
+      setTimeout(() => {
+        try {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF({
+            orientation: "portrait",
+            unit: "mm",
+            format: "a4",
+          });
+          const W = 210,
+            H = 297;
+          const C = this._C;
+
+          // ── Background
+          doc.setFillColor(...C.bg);
+          doc.rect(0, 0, W, H, "F");
+
+          // ── Header gradient bar
+          doc.setFillColor(...C.cyan);
+          doc.rect(0, 0, W, 2, "F");
+          doc.setFillColor(...C.panel);
+          doc.rect(0, 2, W, 32, "F");
+
+          // ── Logo sigma
+          doc.setTextColor(...C.cyan);
+          doc.setFontSize(28);
+          doc.setFont("helvetica", "bold");
+          doc.text("Σ", 14, 22);
+
+          // ── App name
+          doc.setFontSize(18);
+          doc.text("QuantumCalc", 28, 18);
+          doc.setFontSize(9);
+          doc.setTextColor(...C.dim);
+          doc.text("v5.0 — Calculadora Científica Avanzada", 28, 24);
+          doc.text("Motor: Nerdamer + Math.js + Plotly", 28, 29);
+
+          // ── Date
+          const now = new Date().toLocaleString("es-CO", {
+            day: "2-digit",
+            month: "long",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+          doc.setFontSize(8);
+          doc.text(now, W - 14, 22, { align: "right" });
+
+          // ── Cyan separator
+          doc.setFillColor(...C.cyan);
+          doc.rect(0, 34, W, 0.5, "F");
+
+          // ── Graph if present
+          let yOff = 42;
+          const graphEl = document.getElementById("graph-container");
+          const hasGraph = graphEl && graphEl.children.length > 1;
+          if (hasGraph) {
+            try {
+              const svg = graphEl.querySelector(".main-svg");
+              if (svg) {
+                // Just add a placeholder note (full canvas export needs async)
+                doc.setFillColor(...C.panel);
+                doc.roundedRect(12, yOff, W - 24, 6, 1, 1, "F");
+                doc.setTextColor(...C.cyan);
+                doc.setFontSize(8);
+                doc.text(
+                  "📈 Gráfica generada en sesión (ver pantalla)",
+                  14,
+                  yOff + 4,
+                );
+                yOff += 10;
+              }
+            } catch (_) {}
+          }
+
+          // ── Current expression
+          const expr = QC.calc.getExpr();
+          const result = _D("result-display")?.textContent || "";
+          if (expr) {
+            doc.setFillColor(...C.panel);
+            doc.roundedRect(12, yOff, W - 24, 28, 2, 2, "F");
+            doc.setDrawColor(...C.cyan);
+            doc.setLineWidth(0.4);
+            doc.roundedRect(12, yOff, W - 24, 28, 2, 2, "S");
+            doc.setTextColor(...C.cyan);
+            doc.setFontSize(7);
+            doc.text("// EXPRESIÓN CALCULADA", 16, yOff + 5);
+            doc.setTextColor(...C.text);
+            doc.setFontSize(11);
+            doc.setFont("courier", "bold");
+            const exprLines = doc.splitTextToSize(expr, W - 36);
+            doc.text(exprLines.slice(0, 2), 16, yOff + 12);
+            if (result) {
+              doc.setTextColor(...C.green);
+              doc.setFontSize(12);
+              doc.text(result, 16, yOff + 22);
+            }
+            yOff += 34;
+          }
+
+          // ── Steps section
+          const stepEls = document.querySelectorAll(
+            "#steps-container .step-card",
+          );
+          if (stepEls.length) {
+            doc.setTextColor(...C.cyan);
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "bold");
+            doc.text("RESOLUCIÓN PASO A PASO", 14, yOff + 4);
+            doc.setFillColor(...C.cyan);
+            doc.rect(14, yOff + 6, 40, 0.3, "F");
+            yOff += 10;
+
+            doc.setFont("helvetica", "normal");
+            stepEls.forEach((el, idx) => {
+              const label = el.querySelector(".step-label")?.textContent || "";
+              const content =
+                el.querySelector(".step-content")?.textContent?.trim() || "";
+              if (yOff > H - 30) {
+                doc.addPage();
+                doc.setFillColor(...C.bg);
+                doc.rect(0, 0, W, H, "F");
+                yOff = 16;
+              }
+              doc.setFillColor(
+                idx % 2 === 0 ? C.panel : C.bg.map((v) => v + 5),
+              );
+              doc.rect(12, yOff, W - 24, 14, "F");
+              doc.setTextColor(...C.cyan);
+              doc.setFontSize(7);
+              doc.text(label, 16, yOff + 4.5);
+              doc.setTextColor(...C.text);
+              doc.setFontSize(8);
+              const lines = doc.splitTextToSize(content, W - 36);
+              doc.text(lines.slice(0, 2), 16, yOff + 10);
+              yOff += 16;
+            });
+          }
+
+          // ── History section
+          const records = QC.history.records.slice(0, 20);
+          if (records.length) {
+            if (yOff > H - 60) {
+              doc.addPage();
+              doc.setFillColor(...C.bg);
+              doc.rect(0, 0, W, H, "F");
+              yOff = 16;
+            }
+            yOff += 4;
+            doc.setTextColor(...C.cyan);
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "bold");
+            doc.text("HISTORIAL DE CÁLCULOS", 14, yOff + 4);
+            doc.setFillColor(...C.cyan);
+            doc.rect(14, yOff + 6, 44, 0.3, "F");
+            yOff += 12;
+            doc.setFont("helvetica", "normal");
+
+            doc.autoTable({
+              startY: yOff,
+              head: [["#", "Expresión", "Resultado", "Modo", "Fecha"]],
+              body: records.map((r, i) => [
+                i + 1,
+                r.expr.slice(0, 35) + (r.expr.length > 35 ? "…" : ""),
+                r.result.slice(0, 25),
+                r.mode.toUpperCase(),
+                r.date,
+              ]),
+              styles: {
+                fillColor: C.panel,
+                textColor: C.text,
+                fontSize: 7,
+                cellPadding: 2.5,
+                lineColor: C.border,
+                lineWidth: 0.2,
+              },
+              headStyles: {
+                fillColor: C.border,
+                textColor: C.cyan,
+                fontStyle: "bold",
+                fontSize: 7.5,
+              },
+              alternateRowStyles: { fillColor: [8, 18, 30] },
+              columnStyles: {
+                0: { cellWidth: 8 },
+                1: { cellWidth: 60 },
+                2: { cellWidth: 45 },
+                3: { cellWidth: 20 },
+                4: { cellWidth: 35 },
+              },
+              theme: "grid",
+              tableLineColor: C.border,
+              tableLineWidth: 0.2,
+            });
+          }
+
+          // ── Footer on last page
+          const pages = doc.internal.getNumberOfPages();
+          for (let p = 1; p <= pages; p++) {
+            doc.setPage(p);
+            doc.setFillColor(...C.cyan);
+            doc.rect(0, H - 1.5, W, 1.5, "F");
+            doc.setTextColor(...C.dim);
+            doc.setFontSize(7);
+            doc.text("QuantumCalc v5.0 — Generado automáticamente", 14, H - 3);
+            doc.text(`Página ${p} / ${pages}`, W - 14, H - 3, {
+              align: "right",
+            });
+          }
+
+          doc.save("QuantumCalc-Reporte.pdf");
+          QC.ui.toast("PDF profesional generado ✓", "success");
+        } catch (err) {
+          QC.ui.toast("Error PDF: " + err.message, "error");
+        } finally {
+          this._hideSpinner(spinner);
+        }
+      }, 120);
+    });
+  }.bind(QC.export);
+})();
+
+console.log(
+  "[QuantumCalc v5.0] Módulos extendidos cargados: Complejos · Voz · Regresión · Práctica · QR · Export Pro",
+);
+
+/* ─────────────────────────────────────────────────────────────────
+   PATCH: switchMode extendido — añadir 'complex' y 'practice'
+   ───────────────────────────────────────────────────────────────── */
+(function () {
+  const _origSwitch = QC.calc.switchMode.bind(QC.calc);
+  QC.calc.switchMode = function (mode) {
+    // Añadir 'complex' y 'practice' a la lista de paneles
+    const allPanels = [
+      "basic",
+      "symbolic",
+      "algebra",
+      "stats",
+      "editor",
+      "complex",
+      "practice",
+    ];
+    if (
+      ![
+        "basic",
+        "symbolic",
+        "algebra",
+        "stats",
+        "editor",
+        "complex",
+        "practice",
+      ].includes(mode)
+    ) {
+      _origSwitch(mode);
+      return;
+    }
+
+    const S = QC.state;
+    if (mode === S.mode) return;
+    S.mode = mode;
+
+    document.querySelectorAll(".mode-tab").forEach((t) => {
+      const a = t.dataset.mode === mode;
+      t.classList.toggle("active", a);
+      t.setAttribute("aria-selected", a);
+    });
+
+    allPanels.forEach((m) => {
+      const el = document.getElementById("fn-" + m);
+      if (!el) return;
+      if (m === mode) {
+        el.style.display = "";
+        if (window.gsap) {
+          gsap.fromTo(
+            el,
+            { opacity: 0, y: 10, filter: "blur(3px)" },
+            {
+              opacity: 1,
+              y: 0,
+              filter: "blur(0)",
+              duration: 0.32,
+              ease: "power3.out",
+            },
+          );
+          gsap.fromTo(
+            el.querySelectorAll(".key"),
+            { opacity: 0, scale: 0.88 },
+            {
+              opacity: 1,
+              scale: 1,
+              duration: 0.2,
+              stagger: 0.016,
+              ease: "power2.out",
+            },
+          );
+        }
+      } else {
+        if (el.style.display !== "none") {
+          if (window.gsap)
+            gsap.to(el, {
+              opacity: 0,
+              y: -6,
+              duration: 0.15,
+              ease: "power2.in",
+              onComplete: () => (el.style.display = "none"),
+            });
+          else el.style.display = "none";
+        }
+      }
+    });
+
+    if (mode === "symbolic" && !S.nerdReady) {
+      QC.ui.toast("Cargando motor simbólico Nerdamer…", "info", 4000);
+      ensureNerdamer(() => {
+        S.nerdReady = true;
+        QC.ui.toast("Nerdamer listo", "success");
+      });
+    }
+    if (mode === "complex")
+      QC.ui.toast(
+        "ℂ Modo Números Complejos — usa i para la unidad imaginaria",
+        "info",
+        3000,
+      );
+    if (mode === "practice")
+      QC.ui.toast(
+        "🎯 Modo Práctica — selecciona una categoría y genera ejercicios",
+        "info",
+        3000,
+      );
+  };
+})();
+
+/* ─────────────────────────────────────────────────────────────────
+   PATCH: Teclado — Alt+V = voz, Alt+Q = QR
+   ───────────────────────────────────────────────────────────────── */
+document.addEventListener("keydown", function (e) {
+  if (e.altKey && e.key === "v") {
+    e.preventDefault();
+    window.QC_voice?.toggle();
+  }
+  if (e.altKey && e.key === "q") {
+    e.preventDefault();
+    window.QC_qr?.generate();
+  }
+  if (e.altKey && e.key === "p") {
+    e.preventDefault();
+    QC.calc.switchMode("practice");
+  }
+  if (e.altKey && e.key === "c") {
+    e.preventDefault();
+    QC.calc.switchMode("complex");
+  }
+});

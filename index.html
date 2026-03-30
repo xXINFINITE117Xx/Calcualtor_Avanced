@@ -8,7 +8,7 @@
   <meta name="description" content="QuantumCalc — Cálculo simbólico, álgebra, gráficas 2D/3D, OCR e historial" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>QuantumCalc — Calculadora Científica v4.0</title>
+  <title>QuantumCalc — Calculadora Científica v5.0</title>
 
   <!-- FAVICON SVG embebido -->
   <link rel="icon" type="image/svg+xml"
@@ -161,7 +161,7 @@
         <circle cx="26" cy="6" r="3.5" fill="#00ff88" opacity=".85" />
       </svg>
       <span class="logo-text">QuantumCalc</span>
-      <span class="ver" aria-hidden="true">v3.0</span>
+      <span class="ver" aria-hidden="true">v5.0</span>
     </div>
 
     <div class="header-controls" role="toolbar" aria-label="Herramientas">
@@ -180,6 +180,16 @@
         title="Excel">
         <span class="hdr-btn-icon" aria-hidden="true">📊</span>
         <span class="hdr-btn-label">EXCEL</span>
+      </button>
+      <button class="hdr-btn hdr-btn-voice" id="voice-btn" type="button" onclick="QC_voice.toggle()"
+        aria-label="Asistente por voz" title="Dictado por voz (Alt+V)" aria-pressed="false">
+        <span class="hdr-btn-icon" aria-hidden="true">🎙</span>
+        <span class="hdr-btn-label">VOZ</span>
+      </button>
+      <button class="hdr-btn hdr-btn-qr" type="button" onclick="QC_qr.generateResult()"
+        aria-label="Generar QR del resultado" title="Código QR">
+        <span class="hdr-btn-icon" aria-hidden="true">📱</span>
+        <span class="hdr-btn-label">QR</span>
       </button>
       <button class="hdr-btn hdr-btn-theme" id="theme-toggle-btn" type="button" onclick="QC.ui.toggleTheme()"
         aria-label="Cambiar tema" title="Modo oscuro/claro">
@@ -263,8 +273,12 @@
           onclick="QC.calc.switchMode('symbolic')">SIMBÓLICO</button>
         <button class="mode-tab" type="button" data-mode="algebra" role="tab" aria-selected="false"
           onclick="QC.calc.switchMode('algebra')">ÁLGEBRA</button>
+        <button class="mode-tab" type="button" data-mode="complex" role="tab" aria-selected="false"
+          onclick="QC.calc.switchMode('complex')">ℂ COMPLEJOS</button>
         <button class="mode-tab" type="button" data-mode="stats" role="tab" aria-selected="false"
           onclick="QC.calc.switchMode('stats')">STATS</button>
+        <button class="mode-tab mode-tab-new" type="button" data-mode="practice" role="tab" aria-selected="false"
+          onclick="QC.calc.switchMode('practice')">🎯 PRÁCTICA</button>
         <button class="mode-tab mode-tab-new" type="button" data-mode="editor" role="tab" aria-selected="false"
           onclick="QC.calc.switchMode('editor')">✏ EDITOR</button>
       </nav>
@@ -471,11 +485,118 @@
             <button class="key key-fn" type="button" onclick="QC.calc.insert('min(')">min</button>
             <button class="key key-fn" type="button" onclick="QC.calc.insert('max(')">max</button>
           </div>
+          <p class="key-group-label" aria-hidden="true">// REGRESIÓN ESTADÍSTICA</p>
+          <div class="key-row key-row-3">
+            <button class="key key-action" type="button" onclick="QC_regression.run('linear')">
+              <span class="key-sym-main">y=ax+b</span>
+              <span class="key-sym-sub">lineal</span>
+            </button>
+            <button class="key key-action" type="button" onclick="QC_regression.run('poly2')">
+              <span class="key-sym-main">y=ax²+bx</span>
+              <span class="key-sym-sub">polinomial</span>
+            </button>
+            <button class="key key-action" type="button" onclick="QC_regression.run('exp')">
+              <span class="key-sym-main">y=ae^bx</span>
+              <span class="key-sym-sub">exponencial</span>
+            </button>
+          </div>
           <div class="key-row key-row-4">
-            <button class="key key-action" type="button" onclick="QC.calc.runRegression()">regresión</button>
             <button class="key key-action" type="button" onclick="QC.calc.runHistogram()">histograma</button>
             <button class="key key-fn" type="button" onclick="QC.calc.insert('combinations(')">C(n,k)</button>
             <button class="key key-fn" type="button" onclick="QC.calc.insert('permutations(')">P(n,k)</button>
+            <button class="key key-fn" type="button" onclick="QC_qr.generate()">📱 QR</button>
+          </div>
+        </div>
+
+        <!-- Panel COMPLEJOS -->
+        <div id="fn-complex" style="display:none" role="tabpanel">
+          <p class="key-group-label" aria-hidden="true">// NÚMEROS COMPLEJOS z = a + bi</p>
+          <div class="key-row key-row-4">
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('i')"><span
+                class="key-sym-main">i</span></button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('re(')"><span
+                class="key-sym-main">Re(z)</span></button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('im(')"><span
+                class="key-sym-main">Im(z)</span></button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('conj(')"><span
+                class="key-sym-main">z̄</span></button>
+          </div>
+          <p class="key-group-label" aria-hidden="true">// OPERACIONES</p>
+          <div class="key-row key-row-3">
+            <button class="key key-sym key-integral" type="button" onclick="QC_complex.compute(QC.calc.getExpr())">
+              <span class="key-sym-main">CALC ℂ</span>
+              <span class="key-sym-sub">calcular</span>
+            </button>
+            <button class="key key-sym key-deriv" type="button" onclick="QC_complex.magnitude()">
+              <span class="key-sym-main">|z|</span>
+              <span class="key-sym-sub">módulo</span>
+            </button>
+            <button class="key key-sym key-limit" type="button"
+              onclick="QC.calc.setExpr('arg('+QC.calc.getExpr()+')');QC.calc.calculate()">
+              <span class="key-sym-main">arg(z)</span>
+              <span class="key-sym-sub">argumento</span>
+            </button>
+          </div>
+          <div class="key-row key-row-3">
+            <button class="key key-sym key-expand" type="button"
+              onclick="QC.calc.setExpr('conj('+QC.calc.getExpr()+')');QC.calc.calculate()">
+              <span class="key-sym-main">conj</span>
+              <span class="key-sym-sub">conjugado</span>
+            </button>
+            <button class="key key-sym key-factor" type="button" onclick="QC_complex.compute(QC.calc.getExpr())">
+              <span class="key-sym-main">polar</span>
+              <span class="key-sym-sub">r·eⁱᶿ</span>
+            </button>
+            <button class="key key-fn" type="button" onclick="QC.calc.insert('sqrt(-1)')">√-1</button>
+          </div>
+          <p class="key-group-label" aria-hidden="true">// EJEMPLOS RÁPIDOS</p>
+          <div class="key-row key-row-3">
+            <button class="key key-fn" type="button"
+              onclick="QC.calc.setExpr('(3+4i)*(2-i)');QC.calc.calculate()">(3+4i)(2-i)</button>
+            <button class="key key-fn" type="button"
+              onclick="QC.calc.setExpr('(1+i)^4');QC.calc.calculate()">(1+i)⁴</button>
+            <button class="key key-fn" type="button"
+              onclick="QC.calc.setExpr('e^(pi*i)');QC.calc.calculate()">eⁱᵖⁱ</button>
+          </div>
+          <p class="key-group-label" aria-hidden="true">// PASOS COMPLETOS</p>
+          <div class="key-row key-row-2">
+            <button class="key key-calc-alt" type="button" onclick="QC_complex.compute(QC.calc.getExpr())"
+              style="grid-column:span 2">
+              ℂ CALCULAR CON PASOS COMPLETOS
+            </button>
+          </div>
+        </div>
+
+        <!-- Panel PRÁCTICA -->
+        <div id="fn-practice" style="display:none" role="tabpanel">
+          <p class="key-group-label" aria-hidden="true">// MODO PRÁCTICA — EJERCICIOS ALEATORIOS</p>
+          <p class="key-subgroup">ÁLGEBRA</p>
+          <div class="key-row key-row-2">
+            <button class="key key-action practice-gen-btn" type="button" onclick="QC_practice.generate('algebra')">
+              <span class="key-sym-main">GENERAR</span>
+              <span class="key-sym-sub">álgebra</span>
+            </button>
+            <button class="key key-fn" type="button" onclick="QC_practice.generate('algebra')">¿ x = ? ▶</button>
+          </div>
+          <p class="key-subgroup">DERIVADAS</p>
+          <div class="key-row key-row-2">
+            <button class="key key-action practice-gen-btn" type="button" onclick="QC_practice.generate('derivadas')">
+              <span class="key-sym-main">GENERAR</span>
+              <span class="key-sym-sub">derivadas</span>
+            </button>
+            <button class="key key-fn" type="button" onclick="QC_practice.generate('derivadas')">d/dx ▶</button>
+          </div>
+          <p class="key-subgroup">INTEGRALES</p>
+          <div class="key-row key-row-2">
+            <button class="key key-action practice-gen-btn" type="button" onclick="QC_practice.generate('integrales')">
+              <span class="key-sym-main">GENERAR</span>
+              <span class="key-sym-sub">integrales</span>
+            </button>
+            <button class="key key-fn" type="button" onclick="QC_practice.generate('integrales')">∫ dx ▶</button>
+          </div>
+          <div class="practice-info-box">
+            <p>🎯 Practica con ejercicios aleatorios generados automáticamente. Escribe tu respuesta y verifica al
+              instante.</p>
           </div>
         </div>
 
@@ -558,7 +679,8 @@
             <span>CALCULAR Y MOSTRAR PASOS</span>
           </button>
         </div>
-      </div><!-- /keyboard-section -->
+      </div>
+      <!-- /keyboard-section -->
 
       <!-- OCR — Vista previa + confirmación + análisis -->
       <section class="ocr-section" aria-label="OCR — Imagen a ecuación">
