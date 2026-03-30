@@ -6133,3 +6133,1811 @@ document.addEventListener("keydown", function (e) {
     QC.calc.switchMode("complex");
   }
 });
+/* ═══════════════════════════════════════════════════════════════════
+   QuantumCalc v6.0 — Módulos nuevos
+   Nav · Álgebra Lineal · LaTeX · i18n · Práctica dedicada
+   Estadística · Gráficas · QR mejorado · Atajos teclado
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────────────────────────
+   INTERNACIONALIZACIÓN (i18n)
+   ───────────────────────────────────────────────────────────────── */
+const QC_i18n = (function () {
+  const translations = {
+    es: {
+      nav_inicio: "Inicio",
+      nav_lineal: "Álgebra Lineal",
+      nav_estadistica: "Estadística",
+      nav_graficas: "Gráficas",
+      nav_practica: "Práctica",
+      btn_historial: "HISTORIAL",
+      btn_voz: "VOZ",
+      btn_calcular: "CALCULAR Y MOSTRAR PASOS",
+      btn_graficar: "📈 GRAFICAR",
+      btn_latex: "𝄃 LaTeX",
+      btn_nuevo: "Nuevo Ejercicio",
+      tab_basico: "BÁSICO",
+      tab_simbolico: "SIMBÓLICO",
+      tab_algebra: "ÁLGEBRA",
+      display_label: "EXPRESIÓN SIMBÓLICA",
+      panel_graficas: "VISUALIZACIÓN GRÁFICA",
+      panel_pasos: "RESOLUCIÓN PASO A PASO",
+      calculando: "Calculando…",
+      graph_placeholder: "Ingresa una función y elige 2D o 3D",
+      steps_empty:
+        "Ingresa una expresión<br>y presiona <strong>CALCULAR</strong>",
+      hist_empty: "Aún no hay cálculos.<br>¡Empieza a calcular!",
+      lineal_sub:
+        "Matrices, determinantes, sistemas de ecuaciones — paso a paso",
+      lineal_resultado: "RESULTADO Y PASOS",
+      lineal_empty: "Selecciona una operación<br>para ver los pasos",
+      matrix_size: "Tamaño de matriz:",
+      op_det: "Determinante",
+      op_inv: "Inversa",
+      op_transp: "Transpuesta",
+      op_gauss: "Gauss-Jordan",
+      op_eigen: "Valores propios",
+      op_rank: "Rango",
+      op_example: "Ejemplo",
+      op_clear: "Limpiar",
+      stats_sub:
+        "Regresión lineal, polinomial, exponencial — con gráficas y R²",
+      stats_datos: "Datos (formato [[x,y],[x,y],…] o x,y por línea):",
+      stats_resultado: "RESULTADO ESTADÍSTICO",
+      stats_empty: "Los resultados aparecerán aquí",
+      stats_graph_placeholder: "Ingresa datos y selecciona una regresión",
+      reg_lineal: "Regresión Lineal",
+      reg_poly: "Regresión Polinomial",
+      reg_exp: "Regresión Exponencial",
+      graficas_sub: "Visualización 2D y 3D interactiva con Plotly.js",
+      graph_range: "Rango x:",
+      graph_fn: "f(x) =",
+      graph_examples: "EJEMPLOS RÁPIDOS",
+      practica_sub: "Ejercicios aleatorios con verificación instantánea",
+      practica_categoria: "SELECCIONA CATEGORÍA",
+      practica_empty: "Selecciona una categoría<br>y genera un ejercicio",
+      cat_algebra: "Álgebra",
+      cat_derivadas: "Derivadas",
+      cat_integrales: "Integrales",
+      cat_limites: "Límites",
+      score_label: "correctos",
+    },
+    en: {
+      nav_inicio: "Home",
+      nav_lineal: "Linear Algebra",
+      nav_estadistica: "Statistics",
+      nav_graficas: "Graphs",
+      nav_practica: "Practice",
+      btn_historial: "HISTORY",
+      btn_voz: "VOICE",
+      btn_calcular: "CALCULATE & SHOW STEPS",
+      btn_graficar: "📈 GRAPH",
+      btn_latex: "𝄃 LaTeX",
+      btn_nuevo: "New Exercise",
+      tab_basico: "BASIC",
+      tab_simbolico: "SYMBOLIC",
+      tab_algebra: "ALGEBRA",
+      display_label: "SYMBOLIC EXPRESSION",
+      panel_graficas: "GRAPH VISUALIZATION",
+      panel_pasos: "STEP-BY-STEP SOLUTION",
+      calculando: "Computing…",
+      graph_placeholder: "Enter a function and choose 2D or 3D",
+      steps_empty:
+        "Enter an expression<br>and press <strong>CALCULATE</strong>",
+      hist_empty: "No calculations yet.<br>Start computing!",
+      lineal_sub: "Matrices, determinants, systems of equations — step by step",
+      lineal_resultado: "RESULT & STEPS",
+      lineal_empty: "Select an operation<br>to see the steps",
+      matrix_size: "Matrix size:",
+      op_det: "Determinant",
+      op_inv: "Inverse",
+      op_transp: "Transpose",
+      op_gauss: "Gauss-Jordan",
+      op_eigen: "Eigenvalues",
+      op_rank: "Rank",
+      op_example: "Example",
+      op_clear: "Clear",
+      stats_sub:
+        "Linear, polynomial, exponential regression — with graphs and R²",
+      stats_datos: "Data (format [[x,y],[x,y],…] or x,y per line):",
+      stats_resultado: "STATISTICAL RESULT",
+      stats_empty: "Results will appear here",
+      stats_graph_placeholder: "Enter data and select a regression type",
+      reg_lineal: "Linear Regression",
+      reg_poly: "Polynomial Regression",
+      reg_exp: "Exponential Regression",
+      graficas_sub: "Interactive 2D and 3D visualization with Plotly.js",
+      graph_range: "x range:",
+      graph_fn: "f(x) =",
+      graph_examples: "QUICK EXAMPLES",
+      practica_sub: "Random exercises with instant verification",
+      practica_categoria: "SELECT CATEGORY",
+      practica_empty: "Select a category<br>and generate an exercise",
+      cat_algebra: "Algebra",
+      cat_derivadas: "Derivatives",
+      cat_integrales: "Integrals",
+      cat_limites: "Limits",
+      score_label: "correct",
+    },
+  };
+
+  let current = localStorage.getItem("qc-lang") || "es";
+
+  function apply() {
+    document.querySelectorAll("[data-i18n]").forEach((el) => {
+      const key = el.getAttribute("data-i18n");
+      const text = translations[current][key];
+      if (text !== undefined) el.innerHTML = text;
+    });
+    document.documentElement.setAttribute("data-lang", current);
+    const icon = document.getElementById("lang-icon");
+    const label = document.getElementById("lang-label");
+    if (icon) icon.textContent = current === "es" ? "🇪🇸" : "🇺🇸";
+    if (label) label.textContent = current.toUpperCase();
+    document.documentElement.lang = current;
+  }
+
+  function toggle() {
+    current = current === "es" ? "en" : "es";
+    localStorage.setItem("qc-lang", current);
+    apply();
+    window.QC?.ui?.toast(
+      current === "es" ? "Idioma: Español" : "Language: English",
+      "info",
+      2000,
+    );
+  }
+
+  function t(key) {
+    return translations[current][key] || key;
+  }
+
+  // Apply on load
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", apply);
+  } else {
+    setTimeout(apply, 100);
+  }
+
+  return {
+    toggle,
+    apply,
+    t,
+    get current() {
+      return current;
+    },
+  };
+})();
+
+/* ─────────────────────────────────────────────────────────────────
+   NAVEGACIÓN POR SECCIONES
+   ───────────────────────────────────────────────────────────────── */
+const QC_nav = (function () {
+  let currentSection = "inicio";
+
+  function go(section) {
+    if (section === currentSection) return;
+    currentSection = section;
+
+    // Hide all sections
+    document.querySelectorAll(".section-content").forEach((el) => {
+      el.classList.remove("active");
+      el.hidden = true;
+    });
+
+    // Show target
+    const target = document.getElementById("section-" + section);
+    if (target) {
+      target.hidden = false;
+      requestAnimationFrame(() => target.classList.add("active"));
+    }
+
+    // Update desktop nav tabs
+    document.querySelectorAll(".section-tab").forEach((t) => {
+      t.classList.toggle("active", t.dataset.section === section);
+    });
+
+    // Update mobile nav items
+    document.querySelectorAll(".mobile-nav-item[data-section]").forEach((t) => {
+      t.classList.toggle("active", t.dataset.section === section);
+    });
+
+    // GSAP entrance
+    if (window.gsap && target) {
+      gsap.fromTo(
+        target,
+        { opacity: 0, y: 16 },
+        { opacity: 1, y: 0, duration: 0.32, ease: "power3.out" },
+      );
+    }
+
+    // Section-specific inits
+    if (section === "lineal" && !window._linealInited) {
+      QC_lineal.setSize(2);
+      window._linealInited = true;
+    }
+    if (section === "graficas" && !window._graficasInited) {
+      QC_graficas.init();
+      window._graficasInited = true;
+    }
+    if (section === "practica" && !window._practicaInited) {
+      QC_practica.init();
+      window._practicaInited = true;
+    }
+
+    // Close mobile drawer
+    closeMobile();
+
+    // Update URL hash (for direct linking)
+    history.replaceState(null, "", "#" + section);
+  }
+
+  function closeMobile() {
+    const drawer = document.getElementById("mobile-nav-drawer");
+    const btn = document.getElementById("mobile-menu-btn");
+    if (drawer) drawer.hidden = true;
+    if (btn) {
+      btn.classList.remove("open");
+      btn.setAttribute("aria-expanded", "false");
+    }
+  }
+
+  function toggleMobile() {
+    const drawer = document.getElementById("mobile-nav-drawer");
+    const btn = document.getElementById("mobile-menu-btn");
+    if (!drawer) return;
+    const open = drawer.hidden;
+    drawer.hidden = !open;
+    btn?.classList.toggle("open", open);
+    btn?.setAttribute("aria-expanded", open);
+  }
+
+  // Mobile menu button
+  document.addEventListener("DOMContentLoaded", () => {
+    const btn = document.getElementById("mobile-menu-btn");
+    btn?.addEventListener("click", toggleMobile);
+
+    // Read hash on load
+    const hash = location.hash.slice(1);
+    if (
+      ["inicio", "lineal", "estadistica", "graficas", "practica"].includes(hash)
+    ) {
+      go(hash);
+    }
+  });
+
+  return { go, closeMobile, toggleMobile };
+})();
+
+/* ─────────────────────────────────────────────────────────────────
+   ÁLGEBRA LINEAL — Matrices 2×2, 3×3, 4×4
+   Determinante, Inversa, Transpuesta, Gauss-Jordan, Eigenvalores
+   ───────────────────────────────────────────────────────────────── */
+const QC_lineal = (function () {
+  let size = 2;
+
+  function setSize(n) {
+    size = n;
+    document.querySelectorAll(".msz-btn").forEach((b) => {
+      b.classList.toggle("active", parseInt(b.dataset.size) === n);
+    });
+    buildGrid();
+  }
+
+  function buildGrid() {
+    const ga = document.getElementById("matrix-a-grid");
+    const gb = document.getElementById("vector-b-grid");
+    if (!ga || !gb) return;
+
+    ga.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+    ga.innerHTML = "";
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        const inp = document.createElement("input");
+        inp.type = "number";
+        inp.className = "matrix-cell";
+        inp.id = `cell_${r}_${c}`;
+        inp.value = r === c ? "1" : "0";
+        inp.placeholder = "0";
+        inp.setAttribute("aria-label", `fila ${r + 1} columna ${c + 1}`);
+        inp.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            calcFocus(r, c);
+          }
+        });
+        ga.appendChild(inp);
+      }
+    }
+
+    gb.style.gridTemplateColumns = `1fr`;
+    gb.innerHTML = "";
+    for (let r = 0; r < size; r++) {
+      const inp = document.createElement("input");
+      inp.type = "number";
+      inp.className = "matrix-cell vector-cell";
+      inp.id = `vec_${r}`;
+      inp.value = r === 0 ? "1" : "0";
+      inp.placeholder = "0";
+      inp.setAttribute("aria-label", `b${r + 1}`);
+      gb.appendChild(inp);
+    }
+  }
+
+  function calcFocus(r, c) {
+    const nc = c + 1 < size ? c + 1 : 0;
+    const nr = nc === 0 ? r + 1 : r;
+    if (nr < size) document.getElementById(`cell_${nr}_${nc}`)?.focus();
+  }
+
+  function getMatrix() {
+    const M = [];
+    for (let r = 0; r < size; r++) {
+      const row = [];
+      for (let c = 0; c < size; c++) {
+        row.push(
+          parseFloat(document.getElementById(`cell_${r}_${c}`)?.value) || 0,
+        );
+      }
+      M.push(row);
+    }
+    return M;
+  }
+
+  function getVector() {
+    const v = [];
+    for (let r = 0; r < size; r++) {
+      v.push(parseFloat(document.getElementById(`vec_${r}`)?.value) || 0);
+    }
+    return v;
+  }
+
+  function renderSteps(steps) {
+    const container = document.getElementById("lineal-steps-container");
+    if (!container) return;
+    container.innerHTML = "";
+    steps.forEach((s, i) => {
+      const card = document.createElement("div");
+      card.className = "step-card " + (s.type || "");
+      card.style.animationDelay = i * 0.06 + "s";
+      card.innerHTML = `<div class="step-label">${s.label}</div><div class="step-content">${s.content}</div>`;
+      container.appendChild(card);
+    });
+    const count = document.getElementById("lineal-steps-count");
+    if (count) count.textContent = steps.length + " PASOS";
+    window._lastLinealSteps = steps;
+  }
+
+  function matToHTML(M) {
+    if (!M || !M.length) return "";
+    let html = '<div class="matrix-result-display">';
+    M.forEach((row) => {
+      html +=
+        '<div class="matrix-display-row"><span class="matrix-bracket">│</span>';
+      row.forEach((v) => {
+        const val =
+          typeof v === "number" ? (Number.isInteger(v) ? v : v.toFixed(4)) : v;
+        html += `<span class="matrix-cell-display">${val}</span>`;
+      });
+      html += '<span class="matrix-bracket">│</span></div>';
+    });
+    html += "</div>";
+    return html;
+  }
+
+  function vecToHTML(v) {
+    return matToHTML(v.map((x) => [x]));
+  }
+
+  // ── DETERMINANTE ──────────────────────────────────────────────
+  function determinant() {
+    if (!window.math) {
+      window.QC?.ui.toast("Math.js no listo", "warn");
+      return;
+    }
+    const M = getMatrix();
+    const stps = [];
+    stps.push({ label: "MATRIZ DE ENTRADA", content: matToHTML(M), type: "" });
+
+    try {
+      const det = math.det(M);
+      const detFmt = Number.isInteger(det) ? det : det.toFixed(6);
+
+      if (size === 2) {
+        stps.push({
+          label: "FÓRMULA 2×2",
+          content: `det(A) = a₁₁·a₂₂ − a₁₂·a₂₁<br>= ${M[0][0]}·${M[1][1]} − ${M[0][1]}·${M[1][0]}<br>= ${M[0][0] * M[1][1]} − ${M[0][1] * M[1][0]}`,
+          type: "step-info",
+        });
+      } else if (size === 3) {
+        stps.push({
+          label: "EXPANSIÓN POR COFACTORES (fila 1)",
+          content: `det(A) = a₁₁·C₁₁ + a₁₂·C₁₂ + a₁₃·C₁₃<br>donde Cᵢⱼ = (−1)^(i+j)·Mᵢⱼ (menor)`,
+          type: "step-info",
+        });
+      } else {
+        stps.push({
+          label: "MÉTODO",
+          content:
+            "Expansión de Laplace (cofactores) aplicada recursivamente para matrices 4×4.",
+          type: "step-info",
+        });
+      }
+
+      stps.push({
+        label: "RESULTADO: DETERMINANTE",
+        content: `det(A) = <span class="result-box" style="font-size:1.2rem">${detFmt}</span><br><br>${
+          Math.abs(det) < 1e-10
+            ? '⚠ det ≈ 0 → La matriz <span class="highlight">es singular</span> (no invertible)'
+            : '✓ det ≠ 0 → La matriz <span class="highlight">es invertible</span>'
+        }`,
+        type: "step-result",
+      });
+
+      window.QC?.ui.toast(`det(A) = ${detFmt}`, "success");
+      window.QC?.history.save(
+        `det(A) ${size}×${size}`,
+        String(detFmt),
+        "lineal",
+        "math.js",
+      );
+    } catch (e) {
+      stps.push({ label: "ERROR", content: e.message, type: "step-error" });
+    }
+    renderSteps(stps);
+  }
+
+  // ── INVERSA ───────────────────────────────────────────────────
+  function inverse() {
+    if (!window.math) {
+      window.QC?.ui.toast("Math.js no listo", "warn");
+      return;
+    }
+    const M = getMatrix();
+    const stps = [];
+    stps.push({ label: "MATRIZ ORIGINAL A", content: matToHTML(M), type: "" });
+
+    try {
+      const det = math.det(M);
+      if (Math.abs(det) < 1e-10) {
+        stps.push({
+          label: "ERROR",
+          content:
+            'det(A) ≈ 0 → La matriz es <span class="highlight">singular</span> y no tiene inversa.',
+          type: "step-error",
+        });
+        renderSteps(stps);
+        window.QC?.ui.toast("La matriz es singular — sin inversa", "error");
+        return;
+      }
+      stps.push({
+        label: "VERIFICACIÓN",
+        content: `det(A) = ${det.toFixed(6)} ≠ 0 → Inversa existe ✓`,
+        type: "step-info",
+      });
+      stps.push({
+        label: "MÉTODO",
+        content:
+          "Gauss-Jordan: [A | I] → [I | A⁻¹]<br>Se realiza eliminación hacia adelante y sustitución regresiva.",
+        type: "step-info",
+      });
+
+      const inv = math.inv(M);
+      stps.push({
+        label: "RESULTADO: INVERSA A⁻¹",
+        content: matToHTML(inv),
+        type: "step-result",
+      });
+
+      // Verificación A·A⁻¹ = I
+      const product = math.multiply(M, inv);
+      const maxErr = product.flat
+        ? product.flat().reduce((m, v, i) => {
+            const row = Math.floor(i / size),
+              col = i % size;
+            return Math.max(m, Math.abs(v - (row === col ? 1 : 0)));
+          }, 0)
+        : 0;
+      stps.push({
+        label: "VERIFICACIÓN A·A⁻¹ = I",
+        content: `Error máximo: ${maxErr.toExponential(2)} ✓`,
+        type: "step-info",
+      });
+
+      window.QC?.ui.toast("Inversa calculada ✓", "success");
+    } catch (e) {
+      stps.push({ label: "ERROR", content: e.message, type: "step-error" });
+    }
+    renderSteps(stps);
+  }
+
+  // ── TRANSPUESTA ───────────────────────────────────────────────
+  function transpose() {
+    const M = getMatrix();
+    const stps = [];
+    stps.push({ label: "MATRIZ ORIGINAL A", content: matToHTML(M), type: "" });
+    stps.push({
+      label: "DEFINICIÓN",
+      content: "(Aᵀ)ᵢⱼ = Aⱼᵢ — Se intercambian filas y columnas",
+      type: "step-info",
+    });
+
+    const T = M[0].map((_, ci) => M.map((row) => row[ci]));
+    stps.push({
+      label: "RESULTADO: TRANSPUESTA Aᵀ",
+      content: matToHTML(T),
+      type: "step-result",
+    });
+    renderSteps(stps);
+    window.QC?.ui.toast("Transpuesta calculada ✓", "success");
+  }
+
+  // ── GAUSS-JORDAN ──────────────────────────────────────────────
+  function gaussJordan() {
+    const A = getMatrix().map((r) => [...r]);
+    const b = getVector();
+    const n = size;
+    const stps = [];
+
+    stps.push({
+      label: "SISTEMA Ax = b",
+      content: `<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center">${matToHTML(A)}<span style="font-size:1.5rem;color:var(--accent-cyan)">·x =</span>${vecToHTML(b)}</div>`,
+      type: "",
+    });
+
+    // Construir [A|b]
+    const Aug = A.map((row, i) => [...row, b[i]]);
+    stps.push({
+      label: "MATRIZ AUMENTADA [A|b]",
+      content: augToHTML(Aug, n),
+      type: "step-info",
+    });
+
+    // Eliminación hacia adelante
+    for (let col = 0; col < n; col++) {
+      // Pivoteo parcial
+      let maxRow = col;
+      for (let r = col + 1; r < n; r++) {
+        if (Math.abs(Aug[r][col]) > Math.abs(Aug[maxRow][col])) maxRow = r;
+      }
+      if (maxRow !== col) {
+        [Aug[col], Aug[maxRow]] = [Aug[maxRow], Aug[col]];
+        stps.push({
+          label: `PASO: INTERCAMBIO F${col + 1} ↔ F${maxRow + 1}`,
+          content: augToHTML(Aug, n),
+          type: "step-info",
+        });
+      }
+
+      const pivot = Aug[col][col];
+      if (Math.abs(pivot) < 1e-12) {
+        stps.push({
+          label: "PIVOTE CERO",
+          content: `Pivote en columna ${col + 1} es ≈ 0. Sistema puede ser incompatible o indeterminado.`,
+          type: "step-error",
+        });
+        renderSteps(stps);
+        return;
+      }
+
+      // Normalizar fila pivote
+      const pivotVal = pivot.toFixed(4);
+      for (let j = col; j <= n; j++) Aug[col][j] /= pivot;
+      stps.push({
+        label: `PASO: F${col + 1} ÷ ${pivotVal}`,
+        content: augToHTML(Aug, n),
+        type: "",
+      });
+
+      // Eliminar en otras filas
+      for (let r = 0; r < n; r++) {
+        if (r === col || Math.abs(Aug[r][col]) < 1e-12) continue;
+        const factor = Aug[r][col];
+        for (let j = col; j <= n; j++) Aug[r][j] -= factor * Aug[col][j];
+        stps.push({
+          label: `PASO: F${r + 1} − (${factor.toFixed(3)})·F${col + 1}`,
+          content: augToHTML(Aug, n),
+          type: "",
+        });
+      }
+    }
+
+    // Solución
+    const solution = Aug.map((row) => row[n]);
+    let solHTML = '<div class="matrix-result-display">';
+    solution.forEach((val, i) => {
+      const v = Math.abs(val) < 1e-10 ? 0 : val;
+      const fmt = Number.isInteger(v) ? v : parseFloat(v.toFixed(6));
+      solHTML += `<div>x<sub>${i + 1}</sub> = <span class="result-box">${fmt}</span></div>`;
+    });
+    solHTML += "</div>";
+
+    stps.push({
+      label: "SOLUCIÓN DEL SISTEMA",
+      content: solHTML,
+      type: "step-result",
+    });
+    renderSteps(stps);
+    window.QC?.ui.toast("Sistema resuelto ✓", "success");
+    window.QC?.history.save(
+      `Gauss-Jordan ${n}×${n}`,
+      solution.map((v, i) => `x${i + 1}=${v.toFixed(4)}`).join(", "),
+      "lineal",
+      "math.js",
+    );
+  }
+
+  function augToHTML(Aug, n) {
+    let html = '<div class="matrix-result-display">';
+    Aug.forEach((row) => {
+      html +=
+        '<div class="matrix-display-row"><span class="matrix-bracket">│</span>';
+      row.forEach((v, j) => {
+        const val = Math.abs(v) < 1e-10 ? 0 : parseFloat(v.toFixed(4));
+        const style =
+          j === n
+            ? "color:var(--accent-green);font-weight:700;margin-left:8px"
+            : "";
+        if (j === n)
+          html += '<span style="color:var(--accent-dim);margin:0 4px">│</span>';
+        html += `<span class="matrix-cell-display" style="${style}">${val}</span>`;
+      });
+      html += '<span class="matrix-bracket">│</span></div>';
+    });
+    html += "</div>";
+    return html;
+  }
+
+  // ── EIGENVALORES ──────────────────────────────────────────────
+  function eigenvalues() {
+    if (!window.math) {
+      window.QC?.ui.toast("Math.js no listo", "warn");
+      return;
+    }
+    const M = getMatrix();
+    const stps = [];
+    stps.push({ label: "MATRIZ A", content: matToHTML(M), type: "" });
+    stps.push({
+      label: "MÉTODO",
+      content:
+        "Los valores propios λ satisfacen: det(A − λI) = 0 (ecuación característica)",
+      type: "step-info",
+    });
+
+    try {
+      const eig = math.eigs(M);
+      const vals = eig.values;
+      let valHTML = '<div class="matrix-result-display">';
+      vals.forEach((v, i) => {
+        const re = typeof v === "object" ? v.re : v;
+        const im = typeof v === "object" ? v.im : 0;
+        const display =
+          Math.abs(im) < 1e-8
+            ? `<span class="result-box">λ${i + 1} = ${parseFloat(re.toFixed(6))}</span>`
+            : `<span class="result-box">λ${i + 1} = ${re.toFixed(4)} ${im >= 0 ? "+" : "−"} ${Math.abs(im).toFixed(4)}i</span>`;
+        valHTML += `<div style="margin:4px 0">${display}</div>`;
+      });
+      valHTML += "</div>";
+      stps.push({
+        label: "VALORES PROPIOS (EIGENVALORES)",
+        content: valHTML,
+        type: "step-result",
+      });
+      window.QC?.ui.toast("Eigenvalores calculados ✓", "success");
+    } catch (e) {
+      stps.push({
+        label: "ERROR",
+        content: "No se pudo calcular: " + e.message,
+        type: "step-error",
+      });
+    }
+    renderSteps(stps);
+  }
+
+  // ── RANGO ──────────────────────────────────────────────────────
+  function rank() {
+    if (!window.math) {
+      window.QC?.ui.toast("Math.js no listo", "warn");
+      return;
+    }
+    const M = getMatrix();
+    const stps = [];
+    stps.push({ label: "MATRIZ A", content: matToHTML(M), type: "" });
+    stps.push({
+      label: "MÉTODO",
+      content:
+        "Reducción a forma escalonada (eliminación gaussiana). El rango = número de filas no nulas.",
+      type: "step-info",
+    });
+
+    try {
+      // Compute rank via SVD / elimination
+      const Aug = M.map((r) => [...r]);
+      let rk = 0;
+      const n = size;
+      for (let col = 0; col < n && rk < n; col++) {
+        let pivRow = -1;
+        for (let r = rk; r < n; r++)
+          if (Math.abs(Aug[r][col]) > 1e-10) {
+            pivRow = r;
+            break;
+          }
+        if (pivRow === -1) continue;
+        [Aug[rk], Aug[pivRow]] = [Aug[pivRow], Aug[rk]];
+        const piv = Aug[rk][col];
+        for (let j = col; j < n; j++) Aug[rk][j] /= piv;
+        for (let r = 0; r < n; r++) {
+          if (r === rk) continue;
+          const f = Aug[r][col];
+          for (let j = col; j < n; j++) Aug[r][j] -= f * Aug[rk][j];
+        }
+        rk++;
+      }
+      stps.push({
+        label: "RESULTADO: RANGO",
+        content: `rg(A) = <span class="result-box">${rk}</span><br>${rk === n ? "✓ Matriz de rango completo" : `⚠ Rango deficiente (${rk} < ${n})`}`,
+        type: "step-result",
+      });
+      window.QC?.ui.toast(`Rango = ${rk}`, "success");
+    } catch (e) {
+      stps.push({ label: "ERROR", content: e.message, type: "step-error" });
+    }
+    renderSteps(stps);
+  }
+
+  function loadExample() {
+    const examples = {
+      2: [
+        [2, 1],
+        [5, 3],
+      ],
+      3: [
+        [2, -1, 0],
+        [-1, 2, -1],
+        [0, -1, 2],
+      ],
+      4: [
+        [4, 3, 2, 1],
+        [3, 4, 3, 2],
+        [2, 3, 4, 3],
+        [1, 2, 3, 4],
+      ],
+    };
+    const ex = examples[size];
+    ex.forEach((row, r) => {
+      row.forEach((val, c) => {
+        const el = document.getElementById(`cell_${r}_${c}`);
+        if (el) el.value = val;
+      });
+    });
+    const bs = { 2: [1, 2], 3: [1, 0, 1], 4: [1, 0, 1, 0] }[size];
+    bs.forEach((val, r) => {
+      const el = document.getElementById(`vec_${r}`);
+      if (el) el.value = val;
+    });
+    window.QC?.ui.toast("Ejemplo cargado", "info", 1800);
+  }
+
+  function clearMatrix() {
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        const el = document.getElementById(`cell_${r}_${c}`);
+        if (el) el.value = r === c ? 1 : 0;
+      }
+      const vb = document.getElementById(`vec_${r}`);
+      if (vb) vb.value = 0;
+    }
+    clearSteps();
+  }
+
+  function clearSteps() {
+    const container = document.getElementById("lineal-steps-container");
+    if (container)
+      container.innerHTML =
+        '<div class="empty-state"><div class="empty-state-icon">⊞</div><p class="empty-state-text">Selecciona una operación<br>para ver los pasos</p></div>';
+    const count = document.getElementById("lineal-steps-count");
+    if (count) count.textContent = "0 PASOS";
+  }
+
+  return {
+    setSize,
+    determinant,
+    inverse,
+    transpose,
+    gaussJordan,
+    eigenvalues,
+    rank,
+    loadExample,
+    clearMatrix,
+    clearSteps,
+    getLastSteps: () => window._lastLinealSteps || [],
+  };
+})();
+
+/* ─────────────────────────────────────────────────────────────────
+   EXPORTACIÓN LaTeX
+   ───────────────────────────────────────────────────────────────── */
+const QC_latex = (function () {
+  function exprToLatex(expr) {
+    if (!expr) return "";
+    return expr
+      .replace(/\*/g, " \\cdot ")
+      .replace(/sqrt\(([^)]+)\)/g, "\\sqrt{$1}")
+      .replace(/\^(\w+)/g, "^{$1}")
+      .replace(/\^(\(([^)]+)\))/g, "^{$2}")
+      .replace(/pi/g, "\\pi")
+      .replace(/\binf(inity)?\b/gi, "\\infty")
+      .replace(/sin\(/g, "\\sin(")
+      .replace(/cos\(/g, "\\cos(")
+      .replace(/tan\(/g, "\\tan(")
+      .replace(/log\(/g, "\\ln(")
+      .replace(/exp\(/g, "e^{")
+      .replace(/abs\(([^)]+)\)/g, "\\left|$1\\right|")
+      .replace(/integrate\(([^,]+),\s*([^,)]+)\)/g, "\\int $1 \\, d$2")
+      .replace(
+        /integrate\(([^,]+),\s*([^,]+),\s*([^,]+),\s*([^)]+)\)/g,
+        "\\int_{$3}^{$4} $1 \\, d$2",
+      )
+      .replace(/diff\(([^,]+),\s*([^)]+)\)/g, "\\frac{d}{d$2}\\left[$1\\right]")
+      .replace(
+        /limit\(([^,]+),\s*([^,]+),\s*([^)]+)\)/g,
+        "\\lim_{$2 \\to $3} $1",
+      )
+      .replace(/([a-zA-Z]+)\(([^)]+)\)/g, "\\$1\\left($2\\right)");
+  }
+
+  function stepsToLatex(steps) {
+    if (!steps || !steps.length) return "% Sin pasos disponibles";
+    let tex =
+      "\\documentclass{article}\n\\usepackage{amsmath}\n\\usepackage{amssymb}\n\\usepackage[margin=2.5cm]{geometry}\n\\usepackage[T1]{fontenc}\n\\usepackage[utf8]{inputenc}\n\\title{QuantumCalc --- Resolución Paso a Paso}\n\\date{" +
+      new Date().toLocaleDateString("es-CO") +
+      "}\n\\begin{document}\n\\maketitle\n\n";
+    steps.forEach((s, i) => {
+      tex += `\\section*{${s.label || "Paso " + (i + 1)}}\n`;
+      const content = (s.content || "").replace(/<[^>]+>/g, "").trim();
+      tex += content + "\n\n";
+    });
+    tex += "\\end{document}";
+    return tex;
+  }
+
+  function showModal(title, latex) {
+    document.getElementById("latex-modal")?.remove();
+    const overlay = document.createElement("div");
+    overlay.className = "sym-modal-overlay";
+    overlay.id = "latex-modal";
+    overlay.innerHTML = `
+      <div class="sym-modal latex-box">
+        <div class="sym-modal-title">𝄃 ${title}</div>
+        <div class="latex-code-wrap">
+          <button class="latex-copy-btn" onclick="QC_latex._copyCode()">⎘ COPIAR</button>
+          <pre class="latex-code" id="latex-code-content">${latex.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
+        </div>
+        <div class="sym-modal-actions">
+          <button class="sym-modal-btn sym-modal-btn-cancel" onclick="document.getElementById('latex-modal').remove()">Cerrar</button>
+          <button class="sym-modal-btn btn-color-orange" onclick="QC_latex.downloadTex()">⬇ Descargar .tex</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    if (window.gsap)
+      gsap.fromTo(overlay, { opacity: 0 }, { opacity: 1, duration: 0.22 });
+    window._lastLatex = latex;
+  }
+
+  function copyResult() {
+    const expr = window.QC?.calc.getExpr() || "";
+    const result =
+      document
+        .getElementById("result-display")
+        ?.textContent?.replace("= ", "") || "";
+    const steps = window.QC?.state?.allSteps || [];
+
+    let latex = `% QuantumCalc v6.0 — ${new Date().toLocaleString("es-CO")}\n`;
+    latex += `\\documentclass{article}\n\\usepackage{amsmath,amssymb}\n\\begin{document}\n\n`;
+    if (expr) latex += `\\textbf{Expresión:} $${exprToLatex(expr)}$\n\n`;
+    if (result) latex += `\\textbf{Resultado:} $${exprToLatex(result)}$\n\n`;
+    if (steps.length) {
+      latex += "\\section*{Resolución paso a paso}\n\\begin{align*}\n";
+      steps.forEach((s) => {
+        const c = (s.content || "").replace(/<[^>]+>/g, "").trim();
+        latex += `& \\text{' + (s.label||'') + '}: ' + c.slice(0, 120) + '\\\\\n`;
+      });
+      latex += "\\end{align*}\n";
+    }
+    latex += "\\end{document}";
+    showModal("Código LaTeX — Resultado", latex);
+  }
+
+  function copySteps() {
+    const steps = window.QC?.state?.allSteps || [];
+    const latex = stepsToLatex(steps);
+    showModal("Código LaTeX — Pasos Completos", latex);
+  }
+
+  function copyLineal() {
+    const steps = QC_lineal.getLastSteps();
+    const latex = stepsToLatex(steps);
+    showModal("Código LaTeX — Álgebra Lineal", latex);
+  }
+
+  function _copyCode() {
+    const el = document.getElementById("latex-code-content");
+    if (!el) return;
+    navigator.clipboard
+      .writeText(el.textContent || "")
+      .then(() => {
+        window.QC?.ui.toast("LaTeX copiado al portapapeles ✓", "success", 2000);
+      })
+      .catch(() => {
+        window.QC?.ui.toast("No se pudo copiar automáticamente", "warn");
+      });
+  }
+
+  function downloadTex() {
+    const content =
+      window._lastLatex || stepsToLatex(window.QC?.state?.allSteps || []);
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "quantumcalc-" + Date.now() + ".tex";
+    a.click();
+    window.QC?.ui.toast("Archivo .tex descargado ✓", "success", 2000);
+  }
+
+  return {
+    copyResult,
+    copySteps,
+    copyLineal,
+    downloadTex,
+    _copyCode,
+    exprToLatex,
+  };
+})();
+
+/* ─────────────────────────────────────────────────────────────────
+   MODO PRÁCTICA DEDICADO (sección completa)
+   ───────────────────────────────────────────────────────────────── */
+const QC_practica = (function () {
+  let currentCategory = "algebra";
+  let currentExercise = null;
+  let score = { correct: 0, total: 0 };
+
+  const db = {
+    algebra: [
+      { q: "2x + 5 = 13", a: "x=4", hint: "2x = 8, x = 4" },
+      { q: "3x - 7 = 14", a: "x=7", hint: "3x = 21" },
+      { q: "x² - 5x + 6 = 0", a: "x=2,x=3", hint: "(x-2)(x-3) = 0" },
+      { q: "5x + 3 = 2x + 12", a: "x=3", hint: "3x = 9" },
+      { q: "x² - 4 = 0", a: "x=2,x=-2", hint: "Diferencia de cuadrados" },
+      { q: "2x² + x - 3 = 0", a: "x=1,x=-3/2", hint: "Usa fórmula cuadrática" },
+      { q: "log₁₀(x) = 2", a: "x=100", hint: "10² = x" },
+      { q: "√(x+4) = 5", a: "x=21", hint: "x+4 = 25" },
+      { q: "4x - 9 = 3x + 1", a: "x=10", hint: "Agrupa términos con x" },
+      { q: "x/3 + 2 = 5", a: "x=9", hint: "x/3 = 3" },
+    ],
+    derivadas: [
+      { q: "d/dx [x³ − 2x]", a: "3x²-2", hint: "Regla de la potencia" },
+      { q: "d/dx [sin(x)]", a: "cos(x)", hint: "Derivada directa del seno" },
+      { q: "d/dx [eˣ]", a: "e^x", hint: "La exponencial se deriva a sí misma" },
+      {
+        q: "d/dx [x²·cos(x)]",
+        a: "2x·cos(x)-x²·sin(x)",
+        hint: "Regla del producto: (uv)'=u'v+uv'",
+      },
+      { q: "d/dx [ln(x)]", a: "1/x", hint: "Derivada del logaritmo natural" },
+      { q: "d/dx [x⁵ + 3x³ − 7x]", a: "5x⁴+9x²-7", hint: "Término a término" },
+      { q: "d/dx [tan(x)]", a: "sec²(x)", hint: "1/cos²(x)" },
+      { q: "d/dx [x·eˣ]", a: "e^x+x·e^x", hint: "Regla del producto" },
+      { q: "d/dx [√x]", a: "1/(2√x)", hint: "x^(1/2) → (1/2)x^(-1/2)" },
+      { q: "d/dx [x⁴]", a: "4x³", hint: "Regla: nxⁿ⁻¹" },
+    ],
+    integrales: [
+      { q: "∫ 2x dx", a: "x²+C", hint: "∫xⁿ = xⁿ⁺¹/(n+1)" },
+      { q: "∫ cos(x) dx", a: "sin(x)+C", hint: "Integral directa" },
+      { q: "∫ eˣ dx", a: "e^x+C", hint: "Se integra a sí misma" },
+      { q: "∫ 1/x dx", a: "ln|x|+C", hint: "Caso especial" },
+      { q: "∫ x² dx", a: "x³/3+C", hint: "∫x² = x³/3" },
+      { q: "∫ sin(x) dx", a: "-cos(x)+C", hint: "Integral directa del seno" },
+      { q: "∫₀¹ x dx", a: "1/2", hint: "[x²/2]₀¹" },
+      { q: "∫ 3x² − 2x dx", a: "x³-x²+C", hint: "Término a término" },
+      { q: "∫ eˣ − x dx", a: "e^x-x²/2+C", hint: "Término a término" },
+      { q: "∫₀ᵖⁱ sin(x) dx", a: "2", hint: "[-cos(x)]₀ᵖⁱ = 1-(-1)" },
+    ],
+    limites: [
+      { q: "lim(x→0) sin(x)/x", a: "1", hint: "Límite notable" },
+      { q: "lim(x→∞) 1/x", a: "0", hint: "Denominador crece sin límite" },
+      { q: "lim(x→2) x² − 4", a: "0", hint: "Sustituye x = 2" },
+      { q: "lim(x→0) (eˣ − 1)/x", a: "1", hint: "L'Hôpital o serie de Taylor" },
+      { q: "lim(x→∞) x/eˣ", a: "0", hint: "Exponencial crece más rápido" },
+      {
+        q: "lim(x→3) (x²−9)/(x−3)",
+        a: "6",
+        hint: "Factoriza: (x+3)(x-3)/(x-3)",
+      },
+      { q: "lim(x→0) x·sin(1/x)", a: "0", hint: "|x·sin(1/x)| ≤ |x|" },
+      { q: "lim(x→1) (x³−1)/(x−1)", a: "3", hint: "x³-1 = (x-1)(x²+x+1)" },
+    ],
+  };
+
+  function init() {
+    setCategory("algebra");
+  }
+
+  function setCategory(cat) {
+    currentCategory = cat;
+    document.querySelectorAll(".practica-cat-btn").forEach((b) => {
+      b.classList.toggle("active", b.dataset.cat === cat);
+    });
+  }
+
+  function generateNext() {
+    const list = db[currentCategory];
+    let ex;
+    // Avoid repeating last exercise
+    do {
+      ex = list[Math.floor(Math.random() * list.length)];
+    } while (list.length > 1 && ex === currentExercise);
+    currentExercise = ex;
+    renderExercise(ex);
+  }
+
+  function renderExercise(ex) {
+    const panel = document.getElementById("practica-exercise-panel");
+    if (!panel) return;
+
+    const catLabels = {
+      algebra: "ÁLGEBRA",
+      derivadas: "DERIVADAS",
+      integrales: "INTEGRALES",
+      limites: "LÍMITES",
+    };
+
+    panel.innerHTML = `
+      <div class="practica-card">
+        <div class="practica-card-category">${catLabels[currentCategory] || currentCategory}</div>
+        <div class="practica-card-question">${ex.q}</div>
+        <div class="practica-card-answer-wrap">
+          <input class="practica-answer-input" id="practica-answer" type="text"
+            placeholder="Tu respuesta aquí…" autocomplete="off" />
+          <button class="practica-verify-btn btn-color-green" onclick="QC_practica.verify()">✓ Verificar</button>
+        </div>
+        <div id="practica-feedback-box"></div>
+        <div class="practica-card-actions">
+          <button class="practica-hint-btn" onclick="QC_practica.showHint()">💡 Pista</button>
+          <button class="practica-next-btn" onclick="QC_practica.generateNext()">↺ Siguiente</button>
+        </div>
+      </div>`;
+
+    const input = document.getElementById("practica-answer");
+    input?.focus();
+    input?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") verify();
+    });
+
+    if (window.gsap) {
+      gsap.fromTo(
+        panel,
+        { opacity: 0, y: 14 },
+        { opacity: 1, y: 0, duration: 0.3, ease: "power3.out" },
+      );
+    }
+  }
+
+  function verify() {
+    if (!currentExercise) return;
+    const input = document.getElementById("practica-answer");
+    const fb = document.getElementById("practica-feedback-box");
+    if (!input || !fb) return;
+
+    const answer = input.value.trim().toLowerCase().replace(/\s+/g, "");
+    const correct = currentExercise.a.toLowerCase().replace(/\s+/g, "");
+
+    // Flexible matching
+    const normalize = (s) => s.replace(/[^0-9a-z+\-*/=,\.]/g, "");
+    const isCorrect =
+      normalize(answer) === normalize(correct) ||
+      (correct.includes(",") &&
+        correct
+          .split(",")
+          .some((p) => normalize(answer) === normalize(p.trim())));
+
+    score.total++;
+    if (isCorrect) {
+      score.correct++;
+      fb.innerHTML = `<div class="practica-feedback-box feedback-correct">✓ ¡Correcto! La respuesta es: <strong>${currentExercise.a}</strong></div>`;
+      if (window.gsap)
+        gsap.fromTo(
+          fb,
+          { scale: 0.9, opacity: 0 },
+          { scale: 1, opacity: 1, duration: 0.4, ease: "elastic.out(1.2,.6)" },
+        );
+      window.QC?.ui.toast("¡Correcto! 🎉", "success", 2000);
+    } else {
+      fb.innerHTML = `<div class="practica-feedback-box feedback-wrong">✗ Incorrecto. La respuesta es: <strong>${currentExercise.a}</strong></div>`;
+      if (window.gsap) {
+        gsap.fromTo(
+          input,
+          { x: -8 },
+          { x: 0, duration: 0.4, ease: "elastic.out(3,.4)" },
+        );
+        gsap.fromTo(
+          fb,
+          { opacity: 0, y: 5 },
+          { opacity: 1, y: 0, duration: 0.25 },
+        );
+      }
+      window.QC?.ui.toast("Intenta de nuevo 💪", "warn", 2000);
+    }
+
+    updateScore();
+  }
+
+  function showHint() {
+    if (!currentExercise) return;
+    const fb = document.getElementById("practica-feedback-box");
+    if (!fb) return;
+    fb.innerHTML = `<div class="practica-feedback-box feedback-hint">💡 Pista: ${currentExercise.hint}</div>`;
+    if (window.gsap)
+      gsap.fromTo(
+        fb,
+        { opacity: 0, y: 4 },
+        { opacity: 1, y: 0, duration: 0.25 },
+      );
+  }
+
+  function updateScore() {
+    const el = document.getElementById("score-correct");
+    const tot = document.getElementById("score-total");
+    if (el) el.textContent = score.correct;
+    if (tot) tot.textContent = score.total;
+  }
+
+  return { init, setCategory, generateNext, verify, showHint };
+})();
+
+/* ─────────────────────────────────────────────────────────────────
+   ESTADÍSTICA — wrapper para usar desde la sección dedicada
+   ───────────────────────────────────────────────────────────────── */
+const QC_stats = (function () {
+  function getData() {
+    const raw = document.getElementById("stats-data-input")?.value || "";
+    return window.QC_regression?._parseData(raw) || [];
+  }
+
+  function compute(type) {
+    if (!window.math) {
+      window.QC?.ui.toast("Math.js no listo", "warn");
+      return;
+    }
+    const points = getData();
+    if (!points.length) {
+      window.QC?.ui.toast("Ingresa datos primero", "warn");
+      return;
+    }
+    const vals = points.map((p) => p.y);
+
+    let result, label;
+    try {
+      switch (type) {
+        case "mean":
+          result = math.mean(vals);
+          label = "Media (μ)";
+          break;
+        case "median":
+          result = math.median(vals);
+          label = "Mediana";
+          break;
+        case "std":
+          result = math.std(vals);
+          label = "Desv. estándar (σ)";
+          break;
+        case "variance":
+          result = math.variance(vals);
+          label = "Varianza (σ²)";
+          break;
+        case "min":
+          result = math.min(vals);
+          label = "Mínimo";
+          break;
+        case "max":
+          result = math.max(vals);
+          label = "Máximo";
+          break;
+        case "sum":
+          result = math.sum(vals);
+          label = "Suma (Σ)";
+          break;
+        default:
+          return;
+      }
+      const container = document.getElementById("stats-steps-container");
+      if (container) {
+        container.innerHTML = "";
+        const card = document.createElement("div");
+        card.className = "step-card step-result";
+        card.innerHTML = `<div class="step-label">${label}</div><div class="step-content">
+          n = ${vals.length} datos<br>
+          ${label} = <span class="result-box">${typeof result === "number" ? result.toFixed(6) : result}</span>
+        </div>`;
+        container.appendChild(card);
+      }
+      window.QC?.ui.toast(
+        `${label} = ${typeof result === "number" ? result.toFixed(4) : result}`,
+        "success",
+      );
+    } catch (e) {
+      window.QC?.ui.toast("Error: " + e.message, "error");
+    }
+  }
+
+  function histogram() {
+    const points = getData();
+    if (points.length < 2) {
+      window.QC?.ui.toast("Se necesitan al menos 2 puntos", "warn");
+      return;
+    }
+    ensurePlotly(() => {
+      const vals = points.map((p) => p.y);
+      const container = document.getElementById("stats-graph-container");
+      const ph = container?.querySelector(".graph-placeholder");
+      if (ph) ph.style.display = "none";
+      Plotly.newPlot(
+        container,
+        [
+          {
+            x: vals,
+            type: "histogram",
+            marker: {
+              color: "#00d4ff",
+              opacity: 0.8,
+              line: { color: "#00ff88", width: 1.5 },
+            },
+          },
+        ],
+        {
+          paper_bgcolor: "transparent",
+          plot_bgcolor: "rgba(0,8,16,.6)",
+          margin: { l: 46, r: 16, t: 30, b: 46 },
+          title: {
+            text: "Histograma",
+            font: { color: "#00d4ff", family: "Orbitron" },
+          },
+          xaxis: { color: "#4a90b0", gridcolor: "rgba(0,212,255,.12)" },
+          yaxis: {
+            color: "#4a90b0",
+            gridcolor: "rgba(0,212,255,.12)",
+            title: "Frecuencia",
+          },
+        },
+        { responsive: true, displayModeBar: false },
+      );
+    });
+  }
+
+  return { compute, histogram };
+})();
+
+// Patch QC_regression to support stats section textarea
+if (window.QC_regression) {
+  QC_regression._computeFromTextarea = function (type) {
+    const raw = document.getElementById("stats-data-input")?.value || "";
+    const points = this._parseData(raw);
+    if (points.length < 3) {
+      window.QC?.ui.toast("Se necesitan al menos 3 puntos", "warn");
+      return;
+    }
+    let model;
+    if (type === "linear") model = this.linear(points);
+    else if (type === "poly2") model = this.polynomial2(points);
+    else if (type === "exp") {
+      model = this.exponential(points);
+      if (!model) {
+        window.QC?.ui.toast("Exponencial requiere y > 0", "warn");
+        return;
+      }
+    }
+
+    // Show steps in stats panel
+    const container = document.getElementById("stats-steps-container");
+    if (container) {
+      container.innerHTML = "";
+      const stps = [
+        {
+          label: "DATOS",
+          content: `n = ${points.length} puntos`,
+          type: "step-info",
+        },
+        { label: "MODELO", content: `<code>${model.label}</code>`, type: "" },
+        {
+          label: "R²",
+          content: `R² = <span class="result-box">${model.r2.toFixed(6)}</span><br>${model.r2 > 0.95 ? "✓ Ajuste excelente" : model.r2 > 0.8 ? "✓ Ajuste bueno" : "⚠ Ajuste moderado"}`,
+          type: "step-result",
+        },
+      ];
+      stps.forEach((s) => {
+        const card = document.createElement("div");
+        card.className = "step-card " + (s.type || "");
+        card.innerHTML = `<div class="step-label">${s.label}</div><div class="step-content">${s.content}</div>`;
+        container.appendChild(card);
+      });
+    }
+
+    // Plot in stats graph
+    ensurePlotly(() => {
+      const xMin = Math.min(...points.map((p) => p.x));
+      const xMax = Math.max(...points.map((p) => p.x));
+      const xRange = xMax - xMin;
+      const xs = Array.from(
+        { length: 100 },
+        (_, i) => xMin - xRange * 0.05 + (i * (xRange * 1.1)) / 99,
+      );
+      const ys = xs.map((x) => model.fn(x));
+
+      const gContainer = document.getElementById("stats-graph-container");
+      if (gContainer) {
+        const ph = gContainer.querySelector(".graph-placeholder");
+        if (ph) ph.style.display = "none";
+        Plotly.newPlot(
+          gContainer,
+          [
+            {
+              x: points.map((p) => p.x),
+              y: points.map((p) => p.y),
+              mode: "markers",
+              type: "scatter",
+              name: "Datos",
+              marker: {
+                color: "#00ff88",
+                size: 9,
+                line: { color: "#00d4ff", width: 1.5 },
+              },
+            },
+            {
+              x: xs,
+              y: ys,
+              mode: "lines",
+              type: "scatter",
+              name: model.label,
+              line: { color: "#00d4ff", width: 2.5 },
+            },
+          ],
+          {
+            paper_bgcolor: "transparent",
+            plot_bgcolor: "rgba(0,8,16,.6)",
+            margin: { l: 46, r: 16, t: 50, b: 46 },
+            title: {
+              text: `Regresión — R² = ${model.r2.toFixed(4)}`,
+              font: { color: "#00d4ff", family: "Orbitron" },
+            },
+            xaxis: { color: "#4a90b0", gridcolor: "rgba(0,212,255,.12)" },
+            yaxis: { color: "#4a90b0", gridcolor: "rgba(0,212,255,.12)" },
+            legend: {
+              font: { color: "#b0cfe0" },
+              bgcolor: "rgba(5,10,15,.6)",
+              bordercolor: "rgba(0,212,255,.3)",
+              borderwidth: 1,
+            },
+          },
+          { responsive: true, displayModeBar: false },
+        );
+      }
+    });
+
+    window.QC?.ui.toast(
+      `Regresión ${type} — R² = ${model.r2.toFixed(4)}`,
+      "success",
+    );
+  };
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   SECCIÓN GRÁFICAS DEDICADA
+   ───────────────────────────────────────────────────────────────── */
+const QC_graficas = (function () {
+  function init() {
+    // Sync with main graph input
+    const main = document.getElementById("graph-expr");
+    const ded = document.getElementById("graficas-expr");
+    if (main && ded && !ded.value) ded.value = main.value;
+  }
+
+  function getExpr() {
+    return document.getElementById("graficas-expr")?.value?.trim() || "sin(x)";
+  }
+  function getXRange() {
+    const xmin =
+      parseFloat(document.getElementById("graficas-xmin")?.value) || -10;
+    const xmax =
+      parseFloat(document.getElementById("graficas-xmax")?.value) || 10;
+    return { xmin, xmax };
+  }
+
+  function plot2D() {
+    if (!window.math) {
+      window.QC?.ui.toast("Math.js no listo", "warn");
+      return;
+    }
+    ensurePlotly(() => {
+      const expr = getExpr();
+      const { xmin, xmax } = getXRange();
+      const n = 500;
+      const xs = [],
+        ys = [];
+      try {
+        const compiled = math.compile(expr.replace(/\bx\b/g, "x"));
+        for (let i = 0; i <= n; i++) {
+          const x = xmin + ((xmax - xmin) * i) / n;
+          xs.push(x);
+          try {
+            const y = compiled.evaluate({ x });
+            ys.push(isFinite(y) ? y : null);
+          } catch (_) {
+            ys.push(null);
+          }
+        }
+      } catch (e) {
+        window.QC?.ui.toast("Error: " + e.message, "error");
+        return;
+      }
+
+      const container = document.getElementById("graficas-container");
+      const ph = container?.querySelector(".graph-placeholder");
+      if (ph) ph.style.display = "none";
+
+      Plotly.newPlot(
+        container,
+        [
+          {
+            x: xs,
+            y: ys,
+            mode: "lines",
+            type: "scatter",
+            name: `f(x) = ${expr}`,
+            line: { color: "#00d4ff", width: 2.5 },
+            connectgaps: false,
+          },
+        ],
+        {
+          paper_bgcolor: "transparent",
+          plot_bgcolor: "rgba(0,8,16,.6)",
+          margin: { l: 50, r: 20, t: 40, b: 50 },
+          title: {
+            text: `f(x) = ${expr}`,
+            font: { color: "#00d4ff", family: "Orbitron", size: 13 },
+          },
+          xaxis: {
+            color: "#4a90b0",
+            gridcolor: "rgba(0,212,255,.1)",
+            zerolinecolor: "rgba(0,212,255,.3)",
+          },
+          yaxis: {
+            color: "#4a90b0",
+            gridcolor: "rgba(0,212,255,.1)",
+            zerolinecolor: "rgba(0,212,255,.3)",
+          },
+        },
+        { responsive: true, displayModeBar: true, displaylogo: false },
+      );
+
+      window.QC?.ui.toast("Gráfica 2D generada ✓", "success", 1800);
+    });
+  }
+
+  function plot3D() {
+    const expr3d = getExpr().replace(/\bx\b/g, "x").replace(/\by\b/g, "y");
+    if (!window.math) return;
+    ensurePlotly(() => {
+      const { xmin, xmax } = getXRange();
+      const n = 40;
+      const xs = Array.from(
+        { length: n },
+        (_, i) => xmin + ((xmax - xmin) * i) / (n - 1),
+      );
+      const ys = xs;
+      const zs = ys.map((yv) =>
+        xs.map((xv) => {
+          try {
+            const v = math.evaluate(expr3d, { x: xv, y: yv });
+            return isFinite(v) ? v : null;
+          } catch (_) {
+            return null;
+          }
+        }),
+      );
+
+      const container = document.getElementById("graficas-container");
+      const ph = container?.querySelector(".graph-placeholder");
+      if (ph) ph.style.display = "none";
+
+      Plotly.newPlot(
+        container,
+        [
+          {
+            x: xs,
+            y: ys,
+            z: zs,
+            type: "surface",
+            colorscale: [
+              [0, "#050a0f"],
+              [0.5, "#00d4ff"],
+              [1, "#00ff88"],
+            ],
+            showscale: false,
+          },
+        ],
+        {
+          paper_bgcolor: "transparent",
+          plot_bgcolor: "rgba(0,8,16,.6)",
+          margin: { l: 0, r: 0, t: 40, b: 0 },
+          title: {
+            text: `f(x,y) = ${expr3d}`,
+            font: { color: "#00d4ff", family: "Orbitron", size: 12 },
+          },
+          scene: {
+            xaxis: { color: "#4a90b0", gridcolor: "rgba(0,212,255,.15)" },
+            yaxis: { color: "#4a90b0", gridcolor: "rgba(0,212,255,.15)" },
+            zaxis: { color: "#4a90b0", gridcolor: "rgba(0,212,255,.15)" },
+            bgcolor: "rgba(0,8,16,.8)",
+          },
+        },
+        { responsive: true, displayModeBar: false },
+      );
+    });
+  }
+
+  function plotMultiple() {
+    const exprs = getExpr()
+      .split(";")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (exprs.length < 2) {
+      window.QC?.ui.toast(
+        "Separa funciones con ; para graficar múltiples",
+        "info",
+        3000,
+      );
+      plot2D();
+      return;
+    }
+    if (!window.math) return;
+    ensurePlotly(() => {
+      const { xmin, xmax } = getXRange();
+      const n = 400;
+      const colors = ["#00d4ff", "#00ff88", "#ff9f3e", "#c084fc", "#ff6680"];
+      const traces = exprs.map((expr, idx) => {
+        const xs = [],
+          ys = [];
+        for (let i = 0; i <= n; i++) {
+          const x = xmin + ((xmax - xmin) * i) / n;
+          xs.push(x);
+          try {
+            const y = math.evaluate(expr, { x });
+            ys.push(isFinite(y) ? y : null);
+          } catch (_) {
+            ys.push(null);
+          }
+        }
+        return {
+          x: xs,
+          y: ys,
+          mode: "lines",
+          type: "scatter",
+          name: `f${idx + 1}(x) = ${expr}`,
+          line: { color: colors[idx % colors.length], width: 2 },
+          connectgaps: false,
+        };
+      });
+
+      const container = document.getElementById("graficas-container");
+      const ph = container?.querySelector(".graph-placeholder");
+      if (ph) ph.style.display = "none";
+      Plotly.newPlot(
+        container,
+        traces,
+        {
+          paper_bgcolor: "transparent",
+          plot_bgcolor: "rgba(0,8,16,.6)",
+          margin: { l: 50, r: 20, t: 40, b: 50 },
+          xaxis: { color: "#4a90b0", gridcolor: "rgba(0,212,255,.1)" },
+          yaxis: { color: "#4a90b0", gridcolor: "rgba(0,212,255,.1)" },
+          legend: {
+            font: { color: "#b0cfe0" },
+            bgcolor: "rgba(5,10,15,.7)",
+            bordercolor: "rgba(0,212,255,.3)",
+            borderwidth: 1,
+          },
+        },
+        { responsive: true, displayModeBar: false },
+      );
+    });
+  }
+
+  function preset(expr) {
+    const el = document.getElementById("graficas-expr");
+    if (el) {
+      el.value = expr;
+      plot2D();
+    }
+  }
+
+  function clear() {
+    const container = document.getElementById("graficas-container");
+    if (container) {
+      if (window.Plotly) Plotly.purge(container);
+      container.innerHTML =
+        '<div class="graph-placeholder" style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center"><div class="graph-placeholder-icon">∿</div><p class="graph-placeholder-text">Ingresa una función y elige 2D o 3D</p></div>';
+    }
+  }
+
+  return { init, plot2D, plot3D, plotMultiple, preset, clear };
+})();
+
+/* ─────────────────────────────────────────────────────────────────
+   QR MEJORADO v6 — con metadatos y timestamp
+   ───────────────────────────────────────────────────────────────── */
+if (window.QC_qr) {
+  const _origGenResult = QC_qr.generateResult.bind(QC_qr);
+  QC_qr.generateResult = function () {
+    const expr = window.QC?.calc.getExpr() || "";
+    const res =
+      document
+        .getElementById("result-display")
+        ?.textContent?.replace("= ", "") || "";
+    const ts = new Date().toLocaleString("es-CO", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    let content = "QuantumCalc v6.0";
+    if (expr && res) content = `${expr} = ${res} | ${ts}`;
+    else if (expr) content = `${expr} | ${ts}`;
+    this._showQRModal(content, ts);
+  };
+
+  const _origShow = QC_qr._showQRModal.bind(QC_qr);
+  QC_qr._showQRModal = function (content, ts) {
+    document.getElementById("qr-modal")?.remove();
+    const overlay = document.createElement("div");
+    overlay.className = "sym-modal-overlay";
+    overlay.id = "qr-modal";
+    overlay.innerHTML = `
+      <div class="sym-modal qr-box">
+        <div class="sym-modal-title">📱 CÓDIGO QR</div>
+        <div class="qr-content-preview">${String(content).slice(0, 100)}</div>
+        <div id="qr-canvas-wrap" class="qr-canvas-wrap"><div class="qr-loading">Generando QR…</div></div>
+        ${ts ? `<div class="qr-meta">📅 ${ts}</div>` : ""}
+        <div class="qr-actions">
+          <button class="sym-modal-btn btn-color-orange" onclick="QC_qr._download()">⬇ PNG</button>
+          <button class="sym-modal-btn btn-color-orange" onclick="QC_latex.copyResult()">𝄃 LaTeX</button>
+          <button class="sym-modal-btn sym-modal-btn-cancel" onclick="document.getElementById('qr-modal').remove()">Cerrar</button>
+        </div>
+        <p class="qr-hint">Escanea con tu cámara para compartir</p>
+      </div>`;
+    document.body.appendChild(overlay);
+    if (window.gsap)
+      gsap.fromTo(
+        overlay,
+        { opacity: 0, scale: 0.9 },
+        { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(1.4)" },
+      );
+
+    ensureQRCode(() => {
+      const wrap = document.getElementById("qr-canvas-wrap");
+      if (!wrap) return;
+      wrap.innerHTML = "";
+      try {
+        new QRCode(wrap, {
+          text: String(content),
+          width: 200,
+          height: 200,
+          colorDark: "#00d4ff",
+          colorLight: "#050a0f",
+          correctLevel: QRCode.CorrectLevel.M,
+        });
+        if (window.gsap)
+          gsap.fromTo(
+            wrap,
+            { scale: 0.6, opacity: 0 },
+            { scale: 1, opacity: 1, duration: 0.5, ease: "elastic.out(1,.6)" },
+          );
+      } catch (e) {
+        wrap.innerHTML = `<p style="color:var(--accent-red)">Error: ${e.message}</p>`;
+      }
+    });
+  };
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   ATAJOS DE TECLADO — Ctrl+Enter, Ctrl+G, Ctrl+H, Ctrl+M
+   ───────────────────────────────────────────────────────────────── */
+document.addEventListener(
+  "keydown",
+  function (e) {
+    const ctrl = e.ctrlKey || e.metaKey;
+
+    // Ctrl+Enter = Calcular
+    if (ctrl && e.key === "Enter") {
+      e.preventDefault();
+      window.QC?.calc.calculate();
+    }
+    // Ctrl+G = Ir a Gráficas
+    if (ctrl && e.key === "g") {
+      e.preventDefault();
+      QC_nav.go("graficas");
+      setTimeout(() => QC_graficas.plot2D(), 300);
+    }
+    // Ctrl+H = Historial
+    if (ctrl && e.key === "h") {
+      e.preventDefault();
+      window.QC?.history.toggle();
+    }
+    // Ctrl+M = Álgebra Lineal (Matrices)
+    if (ctrl && e.key === "m") {
+      e.preventDefault();
+      QC_nav.go("lineal");
+    }
+    // Ctrl+P = Práctica
+    if (ctrl && e.key === "p") {
+      e.preventDefault();
+      QC_nav.go("practica");
+    }
+    // Ctrl+L = LaTeX
+    if (ctrl && e.key === "l") {
+      e.preventDefault();
+      QC_latex.copyResult();
+    }
+    // Ctrl+Q = QR
+    if (ctrl && e.key === "q") {
+      e.preventDefault();
+      window.QC_qr?.generateResult();
+    }
+    // Alt+V = Voz
+    if (e.altKey && e.key === "v") {
+      e.preventDefault();
+      window.QC_voice?.toggle();
+    }
+    // Escape = cerrar modales
+    if (e.key === "Escape") {
+      document.getElementById("latex-modal")?.remove();
+      document.getElementById("qr-modal")?.remove();
+      document.getElementById("reg-modal")?.remove();
+      document.getElementById("practice-modal")?.remove();
+      QC_nav.closeMobile();
+    }
+  },
+  { passive: false },
+);
+
+/* ─────────────────────────────────────────────────────────────────
+   INICIALIZACIÓN v6
+   ───────────────────────────────────────────────────────────────── */
+document.addEventListener("DOMContentLoaded", function () {
+  // Apply i18n
+  setTimeout(() => QC_i18n.apply(), 200);
+
+  // Init lineal section (lazy)
+  // Section shown = inicio by default
+
+  // Sync graph inputs between sections
+  document
+    .getElementById("graficas-expr")
+    ?.addEventListener("input", function () {
+      const main = document.getElementById("graph-expr");
+      if (main) main.value = this.value;
+    });
+
+  // Welcome toast
+  setTimeout(() => {
+    window.QC?.ui.toast(
+      "QuantumCalc v6.0 — Ctrl+Enter: calcular · Ctrl+G: gráficas · Ctrl+M: matrices",
+      "info",
+      5000,
+    );
+  }, 2000);
+
+  console.log(
+    "[QuantumCalc v6.0] Módulos: Nav · Lineal · LaTeX · i18n · Práctica · Stats · Gráficas · QR · Atajos",
+  );
+});
